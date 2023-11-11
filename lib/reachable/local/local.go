@@ -23,9 +23,7 @@ func InitReachableLocal() {
 	})
 	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 		// read body
-		var b []byte = make([]byte, r.ContentLength)
-		i, err := r.Body.Read(b)
-		log.Println("read:", i)
+		b, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil && err != io.EOF {
 			log.Println("[WARN]: Unable to read:", err)
@@ -34,13 +32,15 @@ func InitReachableLocal() {
 			return
 		}
 
-		evts := processString(string(b))
-		log.Println(evts)
+		evts := processString(string(b), "")
+		for i := range evts {
+			evts[i].TryProcess()
+		}
 	})
 	go http.ListenAndServe(":3000", r)
 }
 
-func processString(evt string) (evts []events.Event) {
+func processString(evt string, keyid string) (evts []events.Event) {
 	// json decode
 	var tmpDecode events.Event
 	err0 := json.Unmarshal([]byte(evt), &evts)
@@ -48,18 +48,17 @@ func processString(evt string) (evts []events.Event) {
 	if err1 == nil && tmpDecode.Uuid != "" {
 		evts = append(evts, tmpDecode)
 	}
-	// decrypt and do the same
-	for i := range evts {
-		evts[i].TryProcess()
-	}
+	// assume plaintext
 
 	if err0 != nil && err1 != nil {
 		// We have failed to decode them, let's decrypt them
-		str, err := core.PrivateInfo.Decrypt(evt)
+		str, keyid, err := core.PrivateInfo.Decrypt(evt)
+		log.Println("keyid:", keyid)
 		if err != nil {
+			// malformed or encrypted with different publickey.
 			return evts
 		}
-		return append(evts, processString(str)...)
+		return append(evts, processString(str, keyid)...)
 	}
 
 	return

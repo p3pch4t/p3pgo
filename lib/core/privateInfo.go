@@ -12,6 +12,7 @@ import (
 type PrivateInfoS struct {
 	gorm.Model
 	ID         uint
+	Username   string
 	PrivateKey string
 	PublicKey  string
 	Passphrase []byte
@@ -43,19 +44,111 @@ func (pi *PrivateInfoS) Refresh() {
 		log.Fatalln("CRIT: Unable to unarmor generated key:", err)
 	}
 
-	pi.PublicKey, err = privKey.GetArmoredPublicKey()
+	pubKey, err := privKey.GetArmoredPublicKey()
 	if err != nil {
 		log.Fatalln("Unable to get armored public key", err)
 	}
+	pi.PublicKey = pubKey
+	pi.Username = privKey.GetFingerprint()
 	DB.Save(&pi)
 }
 
-func (pi *PrivateInfoS) Decrypt(armored string) (string, error) {
-	return helper.DecryptMessageArmored(pi.PrivateKey, pi.Passphrase, armored)
+func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err error) {
+	ciphertext, err := crypto.NewPGPMessageFromArmored(armored)
+
+	if err != nil {
+		log.Fatalln("Unable to get signature key id:", err)
+	}
+	privateKeyObj, err := crypto.NewKeyFromArmored(pi.PrivateKey)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	privateKeyUnlocked, err := privateKeyObj.Unlock(pi.Passphrase)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer privateKeyUnlocked.ClearPrivateParams()
+
+	privateKeyRing, err := crypto.NewKeyRing(privateKeyUnlocked)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	message, err := privateKeyRing.Decrypt(ciphertext, pi.getKeyRing(), 0)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return message.GetString(), pi.findSignFingerprint(ciphertext), nil
 }
 func (pi *PrivateInfoS) DecryptVerify(armored string, publickey string) (string, error) {
 	return helper.DecryptVerifyMessageArmored(publickey, pi.PrivateKey, pi.Passphrase, armored)
 }
 func (pi *PrivateInfoS) EncryptSign(pubkey string, body string) (string, error) {
 	return helper.EncryptSignMessageArmored(pubkey, pi.PrivateKey, pi.Passphrase, body)
+}
+
+func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) string {
+	privateKeyObj, err := crypto.NewKeyFromArmored(pi.PrivateKey)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	privateKeyUnlocked, err := privateKeyObj.Unlock(pi.Passphrase)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer privateKeyUnlocked.ClearPrivateParams()
+
+	privateKeyRing, err := crypto.NewKeyRing(privateKeyUnlocked)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var uis []UserInfo
+	DB.Find(&uis)
+	for i := range uis {
+		c, err := crypto.NewKeyRing(nil)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		pk, err := crypto.NewKeyFromArmored(uis[i].Publickey)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		err = c.AddKey(pk)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		_, err = privateKeyRing.Decrypt(ciphertext, c, 0)
+		if err != nil {
+			log.Println(err)
+		}
+		return pk.GetFingerprint()
+	}
+	return ""
+}
+
+func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
+
+	c, err := crypto.NewKeyRing(nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var uis []UserInfo
+	DB.Find(&uis)
+	for i := range uis {
+		pk, err := crypto.NewKeyFromArmored(uis[i].Publickey)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		err = c.AddKey(pk)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+	}
+	return c
 }

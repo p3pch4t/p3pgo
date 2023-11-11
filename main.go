@@ -21,10 +21,9 @@ func main() {
 	evt := events.Event{
 		EventType: events.EventTypeIntroduceRequest,
 		Data: events.EventDataMixed{EventDataIntroduce: events.EventDataIntroduce{
-			EventDataIntroduceRequest: events.EventDataIntroduceRequest{
-				PublicKey: core.PrivateInfo.PublicKey,
-				Endpoint:  "local://127.0.0.1:3000",
-			},
+			PublicKey: core.PrivateInfo.PublicKey,
+			Endpoint:  "local://127.0.0.1:3000",
+			Username:  core.PrivateInfo.Username,
 		}},
 	}
 	evt.RandomizeUuid()
@@ -38,6 +37,8 @@ func main() {
 		log.Fatalln("Failed to encryptsign", err)
 	}
 	b = []byte(resp)
-	log.Println(string(b))
+	log.Println("Sending:", len(b))
+
 	http.Post("http://127.0.0.1:3000/", "application/json", bytes.NewReader(b))
+	time.Sleep(time.Second * 3)
 }

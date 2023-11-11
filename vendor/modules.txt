@@ -47,6 +47,9 @@ github.com/cloudflare/circl/sign/ed448
 ## explicit; go 1.14
 github.com/go-chi/chi/v5
 github.com/go-chi/chi/v5/middleware
+# github.com/google/uuid v1.4.0
+## explicit
+github.com/google/uuid
 # github.com/jinzhu/inflection v1.0.0
 ## explicit
 github.com/jinzhu/inflection

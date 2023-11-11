@@ -5,6 +5,7 @@ go 1.21.3
 require (
 	github.com/ProtonMail/gopenpgp/v2 v2.7.3
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/google/uuid v1.4.0
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
 )

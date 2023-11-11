@@ -6,6 +6,7 @@ import (
 
 	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -25,13 +26,14 @@ const (
 )
 
 type Event struct {
-	EventType EventType      `json:"type"`
-	Data      EventDataMixed `json:"data"`
-	Uuid      string         `json:"uuid"`
+	InternalKeyID string         `json:"-"`
+	EventType     EventType      `json:"type"`
+	Data          EventDataMixed `json:"data"`
+	Uuid          string         `json:"uuid"`
 }
 
 func (evt *Event) RandomizeUuid() {
-	evt.Uuid = "aaaaa-aaa-aaaa-aaa-aaa"
+	evt.Uuid = uuid.New().String()
 }
 
 type EventDataMixed struct {
@@ -53,50 +55,50 @@ const (
 )
 
 type EventDataIntroduce struct {
-	EventDataIntroduceRequest
-	//PublicKey string   `json:"publickey"`
-	//Endpoints []string `json:"endpoints"`
-	Username string `json:"username"`
+	// EventDataIntroduceRequest
+	PublicKey string        `json:"publickey"`
+	Endpoint  core.Endpoint `json:"endpoints"`
+	Username  string        `json:"username,omitempty"`
 }
 
 type EventDataIntroduceRequest struct {
-	PublicKey string        `json:"publickey"`
-	Endpoint  core.Endpoint `json:"endpoint"`
+	SelfPublicKey string        `json:"selfpublickey,omitempty"`
+	Endpoint      core.Endpoint `json:"endpoint,omitempty"`
 }
 type EventDataMessage struct {
-	Text MessageType `json:"text"`
-	Type MessageType `json:"type"`
+	Text MessageType `json:"text,omitempty"`
+	Type MessageType `json:"type,omitempty"`
 }
 
 type EventDataFileRequest struct {
-	Uuid  string `json:"uuid"`
-	Start int    `json:"start"`
-	End   int    `json:"end"`
+	Uuid  string `json:"uuid,omitempty"`
+	Start int    `json:"start,omitempty"`
+	End   int    `json:"end,omitempty"`
 }
 
 type EventDataFile struct {
-	Uuid  string `json:"file_uuid"`
-	Start int    `json:"file_start"`
-	End   int    `json:"file_end"`
+	Uuid  string `json:"file_uuid,omitempty"`
+	Start int    `json:"file_start,omitempty"`
+	End   int    `json:"file_end,omitempty"`
 	// according to golang docs
 	// Array and slice values encode as JSON arrays, except that []byte encodes
 	// as a base64-encoded string, and a nil slice encodes as the null JSON object.
 	// https://pkg.go.dev/encoding/json#Marshal
 	// So this should work just fine with p3p.dart
 	// TODO: Check if it actually does.
-	Bytes []byte `json:"file_bytes"`
+	Bytes []byte `json:"file_bytes,omitempty"`
 }
 
 type EventDataFileMetadata struct {
-	Files []FileStoreElement `json:"files"`
+	Files []FileStoreElement `json:"files,omitempty"`
 }
 type FileStoreElement struct {
-	Uuid       string `json:"uuid"`
-	Path       string `json:"path"`
-	Sha512sum  string `json:"sha512sum"`
-	SizeBytes  int    `json:"sizeBytes"`
-	IsDeleted  bool   `json:"isDeleted"`
-	ModifyTime int    `json:"modifyTime"`
+	Uuid       string `json:"uuid,omitempty"`
+	Path       string `json:"path,omitempty"`
+	Sha512sum  string `json:"sha512sum,omitempty"`
+	SizeBytes  int    `json:"sizeBytes,omitempty"`
+	IsDeleted  bool   `json:"isDeleted,omitempty"`
+	ModifyTime int    `json:"modifyTime,omitempty"`
 }
 
 func (evt *Event) TryProcess() {
@@ -141,7 +143,7 @@ func (evt *Event) tryProcessIntroduceRequest() {
 	if evt.EventType != EventTypeIntroduceRequest {
 		log.Fatalln("invalid type.")
 	}
-	publicKey, err := crypto.NewKeyFromArmored(evt.Data.EventDataIntroduceRequest.PublicKey)
+	publicKey, err := crypto.NewKeyFromArmored(evt.Data.PublicKey)
 	if err != nil {
 		log.Println("WARN: Unable to armor public key, returning.", err)
 		return
@@ -156,16 +158,14 @@ func (evt *Event) tryProcessIntroduceRequest() {
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
 	ui.Endpoint = evt.Data.EventDataIntroduceRequest.Endpoint
-	core.DB.Save(ui)
+	core.DB.Save(&ui)
 	queueEvent(Event{
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				EventDataIntroduceRequest: EventDataIntroduceRequest{
-					PublicKey: core.SelfUser.Publickey,
-					Endpoint:  core.SelfUser.Endpoint,
-				},
-				Username: core.SelfUser.Username,
+				PublicKey: core.SelfUser.Publickey,
+				Endpoint:  core.SelfUser.Endpoint,
+				Username:  core.SelfUser.Username,
 			},
 		},
 	},
@@ -173,6 +173,10 @@ func (evt *Event) tryProcessIntroduceRequest() {
 }
 
 // EventTypeMessage          EventType = "message"
+func (evt *Event) tryProcessMessage() {
+
+}
+
 // EventTypeFileRequest      EventType = "file.request"
 // EventTypeFile             EventType = "file"
 // EventTypeFileMetadata     EventType = "file.metadata"
