@@ -2,8 +2,9 @@ package core
 
 import (
 	"log"
+	"os"
+	"path"
 
-	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -11,37 +12,25 @@ import (
 var DB *gorm.DB
 var SelfUser = UserInfo{ID: 1}
 
+var storePath string = ""
+
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
-func init() {
-	log.Println("init(): opening sqlite database")
+func OpenSqlite(newStorePath string) {
+	storePath = newStorePath
+	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
+	os.MkdirAll(storePath, 0750)
 	var err error
-	DB, err = gorm.Open(sqlite.Open("p3p.db"), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
 	}
 	DB.AutoMigrate(UserInfo{})
 	DB.AutoMigrate(PrivateInfoS{})
 	DB.AutoMigrate(QueuedEvent{})
+	DB.AutoMigrate(&Message{})
 	PrivateInfo.Refresh()
-	prepareSelfUser()
-}
-
-func prepareSelfUser() {
-	DB.Where(&SelfUser).FirstOrCreate(&SelfUser)
-	if SelfUser.Username == "" {
-		SelfUser.Username = "SelfUser [p3pgo]"
-	}
-	if SelfUser.Publickey == "" {
-		privateKeyObj, err := crypto.NewKeyFromArmored(PrivateInfo.PrivateKey)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		SelfUser.Publickey, err = privateKeyObj.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}
-	DB.Save(&SelfUser)
+	go queueRunner()
+	InitReachableLocal()
 }

@@ -16,24 +16,31 @@ type PrivateInfoS struct {
 	PrivateKey string
 	PublicKey  string
 	Passphrase []byte
+	Endpoint   Endpoint
 }
 
 var PrivateInfo = PrivateInfoS{ID: 0}
 
 func (pi *PrivateInfoS) Refresh() {
+	DB.First(&PrivateInfo)
+}
+
+func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 	DB.FirstOrCreate(pi)
-	if len(pi.Passphrase) == 0 {
-		pi.Passphrase = make([]byte, 4096)
-		// then we can call rand.Read.
-		_, err := rand.Read(pi.Passphrase)
-		if err != nil {
-			log.Fatalln("Failed to read random data.", err)
-		}
+	if len(pi.Passphrase) != 0 {
+		log.Fatalln("WARN: Unable to CreatePrivateInfo - because PrivateInfo is not empty.")
+		return
+	}
+	pi.Passphrase = make([]byte, bitSize*16)
+	// then we can call rand.Read.
+	_, err := rand.Read(pi.Passphrase)
+	if err != nil {
+		log.Fatalln("Failed to read random data.", err)
 	}
 	if pi.PrivateKey == "" {
 		log.Println("PrivateKey is missing. Generating one.")
 		var err error
-		pi.PrivateKey, err = helper.GenerateKey("placeholder name", "user@example.com", pi.Passphrase, "rsa", 4096)
+		pi.PrivateKey, err = helper.GenerateKey(username, email, pi.Passphrase, "rsa", bitSize)
 		if err != nil {
 			log.Fatalln("Unable to generate privkey:", err)
 		}
@@ -51,6 +58,7 @@ func (pi *PrivateInfoS) Refresh() {
 	pi.PublicKey = pubKey
 	pi.Username = privKey.GetFingerprint()
 	DB.Save(&pi)
+
 }
 
 func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err error) {

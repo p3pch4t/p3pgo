@@ -1,10 +1,9 @@
-package events
+package core
 
 import (
 	"log"
 	"strings"
 
-	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/google/uuid"
 )
@@ -32,6 +31,12 @@ type Event struct {
 	Uuid          string         `json:"uuid"`
 }
 
+type EventEncodable struct {
+	EventType EventType   `json:"type"`
+	Data      interface{} `json:"data"`
+	Uuid      string      `json:"uuid"`
+}
+
 func (evt *Event) RandomizeUuid() {
 	evt.Uuid = uuid.New().String()
 }
@@ -56,17 +61,17 @@ const (
 
 type EventDataIntroduce struct {
 	// EventDataIntroduceRequest
-	PublicKey string        `json:"publickey"`
-	Endpoint  core.Endpoint `json:"endpoints"`
-	Username  string        `json:"username,omitempty"`
+	PublicKey string   `json:"publickey,omitempty"`
+	Endpoint  Endpoint `json:"endpoints,omitempty"`
+	Username  string   `json:"username,omitempty"`
 }
 
 type EventDataIntroduceRequest struct {
-	SelfPublicKey string        `json:"selfpublickey,omitempty"`
-	Endpoint      core.Endpoint `json:"endpoint,omitempty"`
+	SelfPublicKey string   `json:"selfpublickey,omitempty"`
+	Endpoint      Endpoint `json:"endpoint,omitempty"`
 }
 type EventDataMessage struct {
-	Text MessageType `json:"text,omitempty"`
+	Text string      `json:"text,omitempty"`
 	Type MessageType `json:"type,omitempty"`
 }
 
@@ -107,6 +112,8 @@ func (evt *Event) TryProcess() {
 		evt.tryProcessIntroduce()
 	case EventTypeIntroduceRequest:
 		evt.tryProcessIntroduceRequest()
+	case EventTypeMessage:
+		evt.tryProcessMessage()
 	default:
 		log.Println("WARN: Unhandled event, type:", evt.EventType)
 	}
@@ -115,31 +122,21 @@ func (evt *Event) TryProcess() {
 // EventTypeUnimplemented    EventType = "unimplemented"
 // EventTypeIntroduce        EventType = "introduce"
 func (evt *Event) tryProcessIntroduce() {
+	log.Println("evt.tryProcessIntroduce")
 	if evt.EventType != EventTypeIntroduce {
 		log.Fatalln("invalid type.")
 	}
-	publicKey, err := crypto.NewKeyFromArmored(evt.Data.EventDataIntroduce.PublicKey)
-	if err != nil {
-		log.Println("WARN: Unable to armor public key, returning.")
-		return
-	}
-	var ui core.UserInfo
-	core.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
-	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
-	if err != nil {
-		log.Println("WARN: Unable to publickey.GetPublicKey()")
-		return
-	}
-	ui.Publickey = b
-	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
-	ui.Username = evt.Data.EventDataIntroduce.Username
-	ui.Endpoint = evt.Data.EventDataIntroduce.Endpoint
-	core.DB.Save(ui)
+	CreateUserByPublicKey(
+		evt.Data.EventDataIntroduce.PublicKey,
+		evt.Data.EventDataIntroduce.Username,
+		evt.Data.EventDataIntroduce.PublicKey,
+	)
 	log.Panicln("new introduction:", evt.Data.EventDataIntroduce.Username)
 }
 
 // EventTypeIntroduceRequest EventType = "introduce.request"
 func (evt *Event) tryProcessIntroduceRequest() {
+	log.Println("evt.tryProcessIntroduceRequest")
 	if evt.EventType != EventTypeIntroduceRequest {
 		log.Fatalln("invalid type.")
 	}
@@ -148,8 +145,8 @@ func (evt *Event) tryProcessIntroduceRequest() {
 		log.Println("WARN: Unable to armor public key, returning.", err)
 		return
 	}
-	var ui core.UserInfo
-	core.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
+	var ui UserInfo
+	DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
 	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
 	if err != nil {
 		log.Println("WARN: Unable to publickey.GetPublicKey()")
@@ -157,24 +154,37 @@ func (evt *Event) tryProcessIntroduceRequest() {
 	}
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
+	ui.KeyID = strings.ToLower(publicKey.GetHexKeyID())
 	ui.Endpoint = evt.Data.EventDataIntroduceRequest.Endpoint
-	core.DB.Save(&ui)
-	queueEvent(Event{
+	DB.Save(&ui)
+	QueueEvent(Event{
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				PublicKey: core.SelfUser.Publickey,
-				Endpoint:  core.SelfUser.Endpoint,
-				Username:  core.SelfUser.Username,
+				PublicKey: SelfUser.Publickey,
+				Endpoint:  SelfUser.Endpoint,
+				Username:  SelfUser.Username,
 			},
 		},
 	},
-		ui.Endpoint)
+		ui)
 }
 
 // EventTypeMessage          EventType = "message"
 func (evt *Event) tryProcessMessage() {
-
+	log.Println("evt.tryProcessMessage")
+	if evt.InternalKeyID == "" {
+		log.Println("warn! unknown evt.InternalKeyID")
+		evt.InternalKeyID = "___UNKNOWN___"
+	}
+	if len(evt.InternalKeyID) > 16 {
+		evt.InternalKeyID = evt.InternalKeyID[len(evt.InternalKeyID)-16:]
+	}
+	DB.Save(&Message{
+		KeyID:    evt.InternalKeyID,
+		Body:     "inc" + string(evt.Data.EventDataMessage.Text),
+		Incoming: true,
+	})
 }
 
 // EventTypeFileRequest      EventType = "file.request"

@@ -10,22 +10,22 @@ type Endpoint string
 func (e *Endpoint) GetProtocol() string {
 	uri, err := url.Parse(string(*e))
 	if err != nil {
-		log.Fatalln("Unale to Endpoint.getProtocol:", err)
+		log.Fatalln("Unbale to Endpoint.getProtocol:", err)
 	}
 	return uri.Scheme
 }
 func (e *Endpoint) GetHost() string {
 	uri, err := url.Parse(string(*e))
 	if err != nil {
-		log.Fatalln("Unale to Endpoint.getHost:", err)
+		log.Fatalln("Unbale to Endpoint.getHost:", err)
 	}
 	// ${urip.host}:${urip.port}${urip.path}${urip.query}
-	return uri.Host + ":" + uri.Port() + uri.Path + uri.RawQuery
+	return "http://" + uri.Host + uri.Path + uri.RawQuery
 }
 func (e *Endpoint) GetExtra() string {
 	uri, err := url.Parse(string(*e))
 	if err != nil {
-		log.Fatalln("Unale to Endpoint.getHost:", err)
+		log.Fatalln("Unbale to Endpoint.getHost:", err)
 	}
 	return uri.Fragment
 }

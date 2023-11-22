@@ -1,13 +1,14 @@
-package events
+package core
 
 import (
 	"encoding/json"
 	"log"
-
-	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 )
 
-func queueEvent(evt Event, endpoint core.Endpoint) {
+func QueueEvent(evt Event, ui UserInfo) {
+	if evt.Uuid == "" {
+		evt.RandomizeUuid()
+	}
 	var eventBody []byte
 	var err error
 	switch evt.EventType {
@@ -32,9 +33,26 @@ func queueEvent(evt Event, endpoint core.Endpoint) {
 	if len(eventBody) == 0 {
 		log.Println("WARN: We are about to queue 0 sized eventBody")
 	}
-	log.Println("QUEUED_EVENT: ", string(eventBody))
-	core.DB.Save(&core.QueuedEvent{
-		Body:     eventBody,
-		Endpoint: endpoint,
+	var evtBodyDecoded interface{}
+	err = json.Unmarshal(eventBody, &evtBodyDecoded)
+	if err != nil {
+		log.Println("WARN: Unable to json.Unmarshal event, reason:", err)
+	}
+	finalEvt := EventEncodable{
+		EventType: evt.EventType,
+		Data:      evtBodyDecoded,
+		Uuid:      evt.Uuid,
+	}
+	eventBody, err = json.Marshal(&finalEvt)
+	log.Println("final eventBody:", eventBody)
+	// log.Println("QUEUED_EVENT: ", string(eventBody))
+	ret, err := PrivateInfo.EncryptSign(ui.Publickey, string(eventBody))
+	if err != nil {
+		log.Println("Unable to EncryptSign:", err)
+		return
+	}
+	DB.Save(&QueuedEvent{
+		Body:     []byte(ret),
+		Endpoint: ui.Endpoint,
 	})
 }
