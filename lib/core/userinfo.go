@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -18,6 +19,21 @@ type UserInfo struct {
 	Fingerprint string   `json:"-"`
 	KeyID       string   `json:"-"`
 	Endpoint    Endpoint `json:"endpoint"`
+}
+
+func (ui *UserInfo) SendIntroduceEvent() {
+	internalEvent := Event{
+		EventType: EventTypeIntroduce,
+		Data: EventDataMixed{
+			EventDataIntroduce: EventDataIntroduce{
+				PublicKey: PrivateInfo.PublicKey,
+				Endpoint:  PrivateInfo.Endpoint,
+				Username:  PrivateInfo.Username,
+			},
+		},
+	}
+	QueueEvent(internalEvent,
+		*ui)
 }
 
 func GetUserInfoByID(id uint) UserInfo {
@@ -39,7 +55,7 @@ func GetAllUserIDs() (UserInfoIDs []uint) {
 	return UserInfoIDs
 }
 
-func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint string) (UserInfo, error) {
+func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
 	publicKey, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
 		log.Println("WARN: Unable to armor public key, returning.")
@@ -57,7 +73,7 @@ func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint st
 	ui.KeyID = strings.ToLower(publicKey.GetHexKeyID())
 	if username == "" && ui.Username == "" {
 		ui.Username = "Unknown User [" + time.Now().String() + "]"
-	} else if ui.Username == "" {
+	} else {
 		ui.Username = username
 	}
 
@@ -65,5 +81,27 @@ func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint st
 		ui.Endpoint = Endpoint(endpoint)
 	}
 	DB.Save(&ui)
+	if shouldIntroduce {
+		ui.SendIntroduceEvent()
+	}
 	return ui, nil
+}
+
+type DiscoveredUserInfo struct {
+	Name      string `json:"name"`
+	Bio       string `json:"bio"`
+	PublicKey string `json:"publickey"`
+	Endpoint  string `json:"endpoint"`
+}
+
+func DiscoverUserByURL(url string) (dui DiscoveredUserInfo, err error) {
+	b, err := i2pGet(url)
+	if err != nil {
+		return DiscoveredUserInfo{}, err
+	}
+	err = json.Unmarshal(b, &dui)
+	if err != nil {
+		return dui, err
+	}
+	return dui, nil
 }

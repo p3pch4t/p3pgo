@@ -25,7 +25,7 @@ type QueuedEvent struct {
 	gorm.Model
 	ID       uint
 	Body     []byte
-	Endpoint Endpoint `json:"endpoints"`
+	Endpoint Endpoint
 }
 
 func (evt *QueuedEvent) Relay() {
@@ -38,10 +38,10 @@ func (evt *QueuedEvent) Relay() {
 	_, err := i2pPost(host, evt.Body)
 	if err != nil {
 		log.Println(err)
+		DB.Delete(evt)
 		return
 	}
 	DB.Delete(evt)
-
 }
 
 func GetQueuedEvents() (evts []QueuedEvent) {
@@ -51,10 +51,10 @@ func GetQueuedEvents() (evts []QueuedEvent) {
 
 func i2pPost(uri string, body []byte) ([]byte, error) {
 	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 30}
+	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 8}
 	// log.Println("Body:" + string(body))
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/octent-stream")
+	req.Header.Set("Content-Type", "application/octet-stream")
 	if err != nil {
 		return []byte{}, err
 	}
@@ -67,7 +67,42 @@ func i2pPost(uri string, body []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	if respbody.StatusCode != 200 {
-		return []byte{}, errors.New("unknown server response.")
+		return []byte{}, errors.New("unknown server response")
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println("Failed to .Close()", err)
+		}
+	}(respbody.Body)
+	b, err := io.ReadAll(respbody.Body)
+	if err != nil {
+		log.Println(err)
+		return b, err
+	}
+	log.Println("OK:", string(b))
+	return b, nil
+}
+
+func i2pGet(uri string) ([]byte, error) {
+	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
+	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 8}
+	// log.Println("Body:" + string(body))
+	req, err := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Content-Type", "application/octet-stream")
+	if err != nil {
+		return []byte{}, err
+	}
+	_, err = http2curl.GetCurlCommand(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	respbody, err := httpClient.Do(req)
+	if err != nil {
+		return []byte{}, err
+	}
+	if respbody.StatusCode != 200 {
+		return []byte{}, errors.New("unknown server response")
 	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -79,10 +114,11 @@ func i2pPost(uri string, body []byte) ([]byte, error) {
 	log.Println("OK:", string(b))
 	return b, nil
 }
+
 func queueRunner() {
 	for {
-		log.Println("queueRunner:")
 		for _, evt := range GetQueuedEvents() {
+			log.Println("processing event:", evt.ID)
 			evt.Relay()
 		}
 		time.Sleep(time.Second * 5)

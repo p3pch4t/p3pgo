@@ -17,7 +17,8 @@ func (e *Endpoint) GetProtocol() string {
 func (e *Endpoint) GetHost() string {
 	uri, err := url.Parse(string(*e))
 	if err != nil {
-		log.Fatalln("Unbale to Endpoint.getHost:", err)
+		log.Println("Unbale to Endpoint.getHost:", err)
+		return ""
 	}
 	// ${urip.host}:${urip.port}${urip.path}${urip.query}
 	return "http://" + uri.Host + uri.Path + uri.RawQuery

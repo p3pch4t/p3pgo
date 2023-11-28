@@ -53,12 +53,35 @@ func GetAllUserInfo() *C.char {
 }
 
 //export AddUserByPublicKey
-func AddUserByPublicKey(publickey *C.char) int {
-	ui, err := core.CreateUserByPublicKey(C.GoString(publickey), "", "")
+func AddUserByPublicKey(publickey *C.char, username *C.char, endpoint *C.char) int {
+	ui, err := core.CreateUserByPublicKey(C.GoString(publickey), C.GoString(username), core.Endpoint(C.GoString(endpoint)), true)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	return int(ui.ID)
+}
+
+//export ForceSendIntroduceEvent
+func ForceSendIntroduceEvent(uid int) bool {
+	ui := core.GetUserInfoByID(uint(uid))
+	ui.SendIntroduceEvent()
+	return true
+}
+
+//export GetUserDetailsByURL
+func GetUserDetailsByURL(url *C.char) *C.char {
+	endpointStr := core.Endpoint(C.GoString(url))
+	dui, err := core.DiscoverUserByURL(endpointStr.GetHost())
+	if err != nil {
+		log.Println(err)
+		return C.CString("{}")
+	}
+	b, err := json.Marshal(dui)
+	if err != nil {
+		log.Println(err)
+		return C.CString("{}")
+	}
+	return C.CString(string(b))
 }
 
 //export GetChatMessages

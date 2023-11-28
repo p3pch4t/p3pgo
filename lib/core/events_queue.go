@@ -44,15 +44,23 @@ func QueueEvent(evt Event, ui UserInfo) {
 		Uuid:      evt.Uuid,
 	}
 	eventBody, err = json.Marshal(&finalEvt)
-	log.Println("final eventBody:", eventBody)
-	// log.Println("QUEUED_EVENT: ", string(eventBody))
-	ret, err := PrivateInfo.EncryptSign(ui.Publickey, string(eventBody))
 	if err != nil {
-		log.Println("Unable to EncryptSign:", err)
-		return
+		log.Println(err)
+	}
+	// log.Println("QUEUED_EVENT: ", string(eventBody))
+	if evt.EventType != EventTypeIntroduce {
+		ret, err := PrivateInfo.EncryptSign(ui.Publickey, string(eventBody))
+		if err != nil {
+			log.Println("Unable to EncryptSign:", err)
+			return
+		}
+		DB.Save(&QueuedEvent{
+			Body:     []byte(ret),
+			Endpoint: ui.Endpoint,
+		})
 	}
 	DB.Save(&QueuedEvent{
-		Body:     []byte(ret),
+		Body:     []byte(eventBody),
 		Endpoint: ui.Endpoint,
 	})
 }

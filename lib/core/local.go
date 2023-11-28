@@ -17,7 +17,12 @@ func InitReachableLocal() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("p3p.go"))
+		b, err := json.Marshal(PrivateInfo.GetDiscoveredUserInfo())
+		if err != nil {
+			w.Write([]byte("an error occurred, and response couldn't get generated."))
+			return
+		}
+		w.Write(b)
 	})
 	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 		// read body
@@ -30,7 +35,7 @@ func InitReachableLocal() {
 			return
 		}
 		log.Println("processString")
-		evts := processString(string(b), "")
+		evts := processString(string(b), "UnKnoWn")
 		for i := range evts {
 			evts[i].TryProcess()
 		}
@@ -43,7 +48,7 @@ func InitReachableLocal() {
 	}()
 }
 func processString(evt string, keyid string) (evts []Event) {
-	log.Println("str:", evt)
+	//log.Println("str:", evt)
 	// json decode
 	var tmpDecode Event
 	err0 := json.Unmarshal([]byte(evt), &evts)
@@ -51,22 +56,28 @@ func processString(evt string, keyid string) (evts []Event) {
 	if err1 == nil && tmpDecode.Uuid != "" {
 		evts = append(evts, tmpDecode)
 	}
-	for i := range evts {
-		evts[i].InternalKeyID = keyid
-	}
+
 	// assume plaintext
 
 	if err0 != nil && err1 != nil {
 		// We have failed to unmarshal them, let's decrypt them
-		str, keyid, err := PrivateInfo.Decrypt(evt)
+		str, _keyid, err := PrivateInfo.Decrypt(evt)
+		keyid = _keyid
 		log.Println("keyid:", keyid)
+		for i := range evts {
+			evts[i].InternalKeyID = keyid
+		}
 		if err != nil {
 			log.Println(err)
 			// malformed or encrypted with different publickey.
 			return evts
 		}
+
 		return append(evts, processString(str, keyid)...)
 	}
-	log.Println("processString: evts:", evts)
+	for i := range evts {
+		evts[i].InternalKeyID = keyid
+	}
+	// log.Println("processString: evts:", evts)
 	return evts
 }

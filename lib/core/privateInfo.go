@@ -13,6 +13,7 @@ type PrivateInfoS struct {
 	gorm.Model
 	ID         uint
 	Username   string
+	Bio        string
 	PrivateKey string
 	PublicKey  string
 	Passphrase []byte
@@ -65,7 +66,8 @@ func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err e
 	ciphertext, err := crypto.NewPGPMessageFromArmored(armored)
 
 	if err != nil {
-		log.Fatalln("Unable to get signature key id:", err)
+		log.Println("Unable to get signature key id:", err, armored)
+		return "", "", err
 	}
 	privateKeyObj, err := crypto.NewKeyFromArmored(pi.PrivateKey)
 	if err != nil {
@@ -85,7 +87,8 @@ func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err e
 
 	message, err := privateKeyRing.Decrypt(ciphertext, pi.getKeyRing(), 0)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return "", "", nil
 	}
 	return message.GetString(), pi.findSignFingerprint(ciphertext), nil
 }
@@ -131,7 +134,8 @@ func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) strin
 		}
 		_, err = privateKeyRing.Decrypt(ciphertext, c, 0)
 		if err != nil {
-			log.Println(err)
+			// log.Println(err)
+			continue
 		}
 		return pk.GetFingerprint()
 	}
@@ -159,4 +163,13 @@ func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
 		}
 	}
 	return c
+}
+
+func (pi *PrivateInfoS) GetDiscoveredUserInfo() DiscoveredUserInfo {
+	return DiscoveredUserInfo{
+		Name:      pi.Username,
+		Bio:       pi.Bio,
+		PublicKey: pi.PublicKey,
+		Endpoint:  string(pi.Endpoint),
+	}
 }

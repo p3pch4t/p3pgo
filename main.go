@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"log"
 	"net/http"
 	"time"
+
+	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 )
 
 func init() {
@@ -33,7 +34,7 @@ func main() {
 	log.Println(string(b))
 	return
 	time.Sleep(time.Millisecond * 250)
-	resp, err := core.PrivateInfo.EncryptSign(core.SelfUser.Publickey, string(b))
+	resp, err := core.PrivateInfo.EncryptSign(core.PrivateInfo.PublicKey, string(b))
 	if err != nil {
 		log.Fatalln("Failed to encryptsign", err)
 	}

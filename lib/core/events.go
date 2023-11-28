@@ -60,7 +60,6 @@ const (
 )
 
 type EventDataIntroduce struct {
-	// EventDataIntroduceRequest
 	PublicKey string   `json:"publickey,omitempty"`
 	Endpoint  Endpoint `json:"endpoints,omitempty"`
 	Username  string   `json:"username,omitempty"`
@@ -126,12 +125,13 @@ func (evt *Event) tryProcessIntroduce() {
 	if evt.EventType != EventTypeIntroduce {
 		log.Fatalln("invalid type.")
 	}
-	CreateUserByPublicKey(
+	ui, err := CreateUserByPublicKey(
 		evt.Data.EventDataIntroduce.PublicKey,
 		evt.Data.EventDataIntroduce.Username,
-		evt.Data.EventDataIntroduce.PublicKey,
+		evt.Data.EventDataIntroduce.Endpoint,
+		false,
 	)
-	log.Panicln("new introduction:", evt.Data.EventDataIntroduce.Username)
+	log.Println("new introduction:", evt.Data.EventDataIntroduce.Username, ui.Username, err)
 }
 
 // EventTypeIntroduceRequest EventType = "introduce.request"
@@ -161,9 +161,9 @@ func (evt *Event) tryProcessIntroduceRequest() {
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				PublicKey: SelfUser.Publickey,
-				Endpoint:  SelfUser.Endpoint,
-				Username:  SelfUser.Username,
+				PublicKey: PrivateInfo.PublicKey,
+				Endpoint:  PrivateInfo.Endpoint,
+				Username:  PrivateInfo.Username,
 			},
 		},
 	},
@@ -176,13 +176,15 @@ func (evt *Event) tryProcessMessage() {
 	if evt.InternalKeyID == "" {
 		log.Println("warn! unknown evt.InternalKeyID")
 		evt.InternalKeyID = "___UNKNOWN___"
+		return
 	}
 	if len(evt.InternalKeyID) > 16 {
 		evt.InternalKeyID = evt.InternalKeyID[len(evt.InternalKeyID)-16:]
 	}
+	log.Println("InternalKeyID:", evt.InternalKeyID)
 	DB.Save(&Message{
 		KeyID:    evt.InternalKeyID,
-		Body:     "inc" + string(evt.Data.EventDataMessage.Text),
+		Body:     string(evt.Data.EventDataMessage.Text),
 		Incoming: true,
 	})
 }

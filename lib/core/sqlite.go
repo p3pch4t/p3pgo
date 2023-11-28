@@ -10,7 +10,6 @@ import (
 )
 
 var DB *gorm.DB
-var SelfUser = UserInfo{ID: 1}
 
 var storePath string = ""
 
@@ -26,9 +25,9 @@ func OpenSqlite(newStorePath string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	DB.AutoMigrate(UserInfo{})
-	DB.AutoMigrate(PrivateInfoS{})
-	DB.AutoMigrate(QueuedEvent{})
+	DB.AutoMigrate(&UserInfo{})
+	DB.AutoMigrate(&PrivateInfoS{})
+	DB.AutoMigrate(&QueuedEvent{})
 	DB.AutoMigrate(&Message{})
 	PrivateInfo.Refresh()
 	go queueRunner()

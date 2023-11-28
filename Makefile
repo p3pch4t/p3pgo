@@ -15,5 +15,7 @@ c_api_android:
 	CGO_ENABLED=1 CC=${NDK_HOME}/${ANDROID_386} CXX=${NDK_HOME}/${ANDROID_386}++ GOOS=android GOARCH=386 go build -v -buildmode=c-shared -o build/api_android_x86.so .
 	CGO_ENABLED=1 CC=${NDK_HOME}/${ANDROID_AMD64} CXX=${NDK_HOME}/${ANDROID_AMD64}++ GOOS=android GOARCH=amd64 go build -v -buildmode=c-shared -o build/api_android_x86_64.so .
 
+clean:
+	rm -rf build
 
-.PHONY: c_api
+.PHONY: c_api clean c_api_android
