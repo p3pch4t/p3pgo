@@ -38,7 +38,7 @@ func (evt *QueuedEvent) Relay() {
 	_, err := i2pPost(host, evt.Body)
 	if err != nil {
 		log.Println(err)
-		DB.Delete(evt)
+		// DB.Delete(evt)
 		return
 	}
 	DB.Delete(evt)
@@ -51,7 +51,7 @@ func GetQueuedEvents() (evts []QueuedEvent) {
 
 func i2pPost(uri string, body []byte) ([]byte, error) {
 	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 8}
+	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 60}
 	// log.Println("Body:" + string(body))
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/octet-stream")

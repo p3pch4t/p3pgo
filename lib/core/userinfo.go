@@ -13,18 +13,26 @@ import (
 
 type UserInfo struct {
 	gorm.Model
-	ID          uint   `json:"id"`
-	Username    string `json:"username"`
-	Publickey   string `json:"publickey"`
-	Fingerprint string `json:"-"`
-	// KeyID       string   `json:"-"`
-	Endpoint Endpoint `json:"endpoint"`
+	ID          uint     `json:"id"`
+	Username    string   `json:"username"`
+	Publickey   string   `json:"publickey"`
+	Fingerprint string   `json:"-"`
+	KeyID       string   `json:"-"`
+	Endpoint    Endpoint `json:"endpoint"`
+}
+
+func StringToKeyID(str string) string {
+	keyid := strings.ToLower(str)
+	if len(keyid) > 16 {
+		keyid = keyid[len(keyid)-16:]
+	}
+	return keyid
 }
 
 func (ui *UserInfo) GetKeyID() string {
 	publicKey, err := crypto.NewKeyFromArmored(ui.Publickey)
 	if err != nil {
-		log.Fatalln(ui.ID, ui.Username, err)
+		log.Panicln(ui.ID, ui.Username, err)
 		return ""
 	}
 	keyid := strings.ToLower(publicKey.GetHexKeyID())
@@ -53,7 +61,17 @@ func GetUserInfoByID(id uint) (UserInfo, error) {
 	var ui UserInfo
 	DB.Find(&ui, "id = ?", id)
 	if id == 0 || ui.ID != id {
-		return UserInfo{ID: id}, errors.New("user with given id couldn't be found.")
+		return UserInfo{ID: id}, errors.New("user with given id couldn't be found")
+	}
+	return ui, nil
+}
+
+func GetUserInfoByKeyID(keyid string) (UserInfo, error) {
+	var ui UserInfo
+	keyid = StringToKeyID(keyid)
+	DB.Find(&ui, "key_id = ?", keyid)
+	if keyid == "" || ui.KeyID != keyid {
+		return UserInfo{KeyID: keyid}, errors.New("user with given key_id couldn't be found")
 	}
 	return ui, nil
 }

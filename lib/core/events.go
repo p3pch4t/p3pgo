@@ -2,6 +2,7 @@ package core
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
@@ -19,9 +20,7 @@ const (
 	EventTypeIntroduce        EventType = "introduce"
 	EventTypeIntroduceRequest EventType = "introduce.request"
 	EventTypeMessage          EventType = "message"
-	EventTypeFileRequest      EventType = "file.request"
 	EventTypeFile             EventType = "file"
-	EventTypeFileMetadata     EventType = "file.metadata"
 )
 
 type Event struct {
@@ -45,9 +44,7 @@ type EventDataMixed struct {
 	EventDataIntroduce
 	EventDataIntroduceRequest
 	EventDataMessage
-	EventDataFileRequest
 	EventDataFile
-	EventDataFileMetadata
 }
 
 type MessageType string
@@ -74,16 +71,8 @@ type EventDataMessage struct {
 	Type MessageType `json:"type,omitempty"`
 }
 
-type EventDataFileRequest struct {
-	Uuid  string `json:"uuid,omitempty"`
-	Start int    `json:"start,omitempty"`
-	End   int    `json:"end,omitempty"`
-}
-
 type EventDataFile struct {
-	Uuid  string `json:"file_uuid,omitempty"`
-	Start int    `json:"file_start,omitempty"`
-	End   int    `json:"file_end,omitempty"`
+	Uuid string `json:"file_uuid,omitempty"`
 	// according to golang docs
 	// Array and slice values encode as JSON arrays, except that []byte encodes
 	// as a base64-encoded string, and a nil slice encodes as the null JSON object.
@@ -91,10 +80,12 @@ type EventDataFile struct {
 	// So this should work just fine with p3p.dart
 	// TODO: Check if it actually does.
 	Bytes []byte `json:"file_bytes,omitempty"`
-}
-
-type EventDataFileMetadata struct {
-	Files []FileStoreElement `json:"files,omitempty"`
+	//Path - is the in chat path, eg /Apps/Calendar.xdc
+	Path       string `json:"path,omitempty"`
+	Sha512sum  string `json:"sha512sum,omitempty"`
+	SizeBytes  int64  `json:"sizeBytes,omitempty"`
+	IsDeleted  bool   `json:"isDeleted,omitempty"`
+	ModifyTime int64  `json:"modifyTime,omitempty"`
 }
 
 func (evt *Event) TryProcess() {
@@ -105,6 +96,8 @@ func (evt *Event) TryProcess() {
 		evt.tryProcessIntroduceRequest()
 	case EventTypeMessage:
 		evt.tryProcessMessage()
+	case EventTypeFile:
+		evt.tryProcessFile()
 	default:
 		log.Println("WARN: Unhandled event, type:", evt.EventType)
 	}
@@ -180,6 +173,26 @@ func (evt *Event) tryProcessMessage() {
 	})
 }
 
-// EventTypeFileRequest      EventType = "file.request"
 // EventTypeFile             EventType = "file"
-// EventTypeFileMetadata     EventType = "file.metadata"
+func (evt *Event) tryProcessFile() {
+	log.Println("evt.tryProcessFile")
+	if evt.InternalKeyID == "" {
+		log.Println("warn! unknown evt.InternalKeyID")
+		evt.InternalKeyID = "___UNKNOWN___"
+		return
+	}
+	f, err := os.CreateTemp(storePath, "tmp")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	f.Write(evt.Data.EventDataFile.Bytes)
+	defer f.Close()
+	CreateFileStoreElement(
+		StringToKeyID(evt.InternalKeyID),
+		evt.Data.EventDataFile.Uuid,
+		evt.Data.EventDataFile.Path,
+		f.Name(),
+		evt.Data.EventDataFile.ModifyTime,
+	)
+	//	fse.UpdateContent(false)
+}

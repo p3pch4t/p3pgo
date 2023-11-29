@@ -41,5 +41,18 @@ func OpenSqlite(newStorePath string) {
 	log.Println("DB.AutoMigrate.FileStoreElement", DB.AutoMigrate(&FileStoreElement{}))
 	PrivateInfo.Refresh()
 	go queueRunner()
+	go fileStoreElementQueueRunner()
+	ensureProperUserInfo()
 	InitReachableLocal()
+}
+
+func ensureProperUserInfo() {
+	var uis []UserInfo
+	DB.Find(&uis)
+	for i := range uis {
+		if uis[i].KeyID != uis[i].GetKeyID() {
+			uis[i].KeyID = uis[i].GetKeyID()
+			DB.Save(&uis[i])
+		}
+	}
 }

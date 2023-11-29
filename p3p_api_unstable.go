@@ -258,7 +258,8 @@ func CreateFileStoreElement(uid uint, fileInChatPath *C.char, localFilePath *C.c
 	if err != nil {
 		return -1
 	}
-	fi := core.CreateFileStoreElement(ui, "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro())
+	fi := core.CreateFileStoreElement(ui.GetKeyID(), "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro())
+	fi.Announce()
 	return int64(fi.ID)
 }
 
