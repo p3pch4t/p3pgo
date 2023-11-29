@@ -1,8 +1,9 @@
 package core
 
 import (
-	"gorm.io/gorm"
 	"log"
+
+	"gorm.io/gorm"
 )
 
 type Message struct {
@@ -20,15 +21,21 @@ func GetMessageByID(msgID int) Message {
 
 func GetMessagesByUserInfo(ui UserInfo) []Message {
 	var msgs []Message
-	DB.Where("key_id = ?", ui.KeyID).Order("created_at DESC").Find(&msgs)
+	DB.Where("key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&msgs)
 	return msgs
 }
 
+func GetFileStoreElementsByUserInfo(ui UserInfo) []FileStoreElement {
+	var fselms []FileStoreElement
+	DB.Where("internal_key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&fselms)
+	return fselms
+}
+
 func SendMessage(ui UserInfo, messageType MessageType, text string) {
-	log.Println("SendMessage", ui.KeyID, messageType)
-	DB.Save(&Message{KeyID: ui.KeyID, Incoming: false, Body: text})
+	log.Println("SendMessage", ui.GetKeyID(), messageType)
+	DB.Save(&Message{KeyID: ui.GetKeyID(), Incoming: false, Body: text})
 	evt := Event{
-		InternalKeyID: ui.KeyID,
+		InternalKeyID: ui.GetKeyID(),
 		EventType:     EventTypeMessage,
 		Data: EventDataMixed{
 			EventDataMessage: EventDataMessage{

@@ -96,14 +96,6 @@ type EventDataFile struct {
 type EventDataFileMetadata struct {
 	Files []FileStoreElement `json:"files,omitempty"`
 }
-type FileStoreElement struct {
-	Uuid       string `json:"uuid,omitempty"`
-	Path       string `json:"path,omitempty"`
-	Sha512sum  string `json:"sha512sum,omitempty"`
-	SizeBytes  int    `json:"sizeBytes,omitempty"`
-	IsDeleted  bool   `json:"isDeleted,omitempty"`
-	ModifyTime int    `json:"modifyTime,omitempty"`
-}
 
 func (evt *Event) TryProcess() {
 	switch evt.EventType {
@@ -154,7 +146,6 @@ func (evt *Event) tryProcessIntroduceRequest() {
 	}
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
-	ui.KeyID = strings.ToLower(publicKey.GetHexKeyID())
 	ui.Endpoint = evt.Data.EventDataIntroduceRequest.Endpoint
 	DB.Save(&ui)
 	QueueEvent(Event{

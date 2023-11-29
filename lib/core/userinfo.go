@@ -13,12 +13,25 @@ import (
 
 type UserInfo struct {
 	gorm.Model
-	ID          uint     `json:"id"`
-	Username    string   `json:"username"`
-	Publickey   string   `json:"publickey"`
-	Fingerprint string   `json:"-"`
-	KeyID       string   `json:"-"`
-	Endpoint    Endpoint `json:"endpoint"`
+	ID          uint   `json:"id"`
+	Username    string `json:"username"`
+	Publickey   string `json:"publickey"`
+	Fingerprint string `json:"-"`
+	// KeyID       string   `json:"-"`
+	Endpoint Endpoint `json:"endpoint"`
+}
+
+func (ui *UserInfo) GetKeyID() string {
+	publicKey, err := crypto.NewKeyFromArmored(ui.Publickey)
+	if err != nil {
+		log.Fatalln(ui.ID, ui.Username, err)
+		return ""
+	}
+	keyid := strings.ToLower(publicKey.GetHexKeyID())
+	if len(keyid) > 16 {
+		keyid = keyid[len(keyid)-16:]
+	}
+	return keyid
 }
 
 func (ui *UserInfo) SendIntroduceEvent() {
@@ -36,10 +49,13 @@ func (ui *UserInfo) SendIntroduceEvent() {
 		*ui)
 }
 
-func GetUserInfoByID(id uint) UserInfo {
+func GetUserInfoByID(id uint) (UserInfo, error) {
 	var ui UserInfo
 	DB.Find(&ui, "id = ?", id)
-	return ui
+	if id == 0 || ui.ID != id {
+		return UserInfo{ID: id}, errors.New("user with given id couldn't be found.")
+	}
+	return ui, nil
 }
 
 func GetAllUserIDs() (UserInfoIDs []uint) {
@@ -70,7 +86,6 @@ func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint En
 	}
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
-	ui.KeyID = strings.ToLower(publicKey.GetHexKeyID())
 	if username == "" && ui.Username == "" {
 		ui.Username = "Unknown User [" + time.Now().String() + "]"
 	} else {

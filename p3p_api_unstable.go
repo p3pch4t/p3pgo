@@ -7,6 +7,7 @@ import (
 	"C"
 	"encoding/json"
 	"log"
+	"time"
 
 	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
@@ -63,7 +64,10 @@ func AddUserByPublicKey(publickey *C.char, username *C.char, endpoint *C.char) i
 
 //export ForceSendIntroduceEvent
 func ForceSendIntroduceEvent(uid int) bool {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	ui.SendIntroduceEvent()
 	return true
 }
@@ -84,9 +88,12 @@ func GetUserDetailsByURL(url *C.char) *C.char {
 	return C.CString(string(b))
 }
 
-//export GetChatMessages
-func GetChatMessages(UserInfoID int) *C.char {
-	var ui core.UserInfo = core.GetUserInfoByID(uint(UserInfoID))
+//export GetUserInfoMessages
+func GetUserInfoMessages(UserInfoID int) *C.char {
+	ui, err := core.GetUserInfoByID(uint(UserInfoID))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	msgs := core.GetMessagesByUserInfo(ui)
 	var msgids []uint
 	for i := range msgs {
@@ -129,7 +136,10 @@ func GetMessageIsIncoming(msgID int) bool {
 
 //export GetUserInfoId
 func GetUserInfoId(uid int) int64 {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return int64(ui.ID)
 }
 
@@ -140,7 +150,10 @@ func GetPrivateInfoId() int64 {
 
 //export GetUserInfoPublicKeyArmored
 func GetUserInfoPublicKeyArmored(uid int) *C.char {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return C.CString(ui.Publickey)
 }
 
@@ -151,7 +164,10 @@ func GetPrivateInfoPublicKeyArmored() *C.char {
 
 //export GetUserInfoUsername
 func GetUserInfoUsername(uid int) *C.char {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	//b, _ := json.Marshal(ui)
 	return C.CString(ui.Username)
 }
@@ -164,7 +180,10 @@ func GetPrivateInfoUsername() *C.char {
 //export SetUserInfoUsername
 func SetUserInfoUsername(uid int, username *C.char) {
 	username0 := C.GoString(username)
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	ui.Username = username0
 	core.DB.Save(&ui)
 }
@@ -183,13 +202,19 @@ func SetPrivateInfoEepsiteDomain(eepsite *C.char) {
 
 //export GetUserInfoEndpoint
 func GetUserInfoEndpoint(uid int) *C.char {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return C.CString(string(ui.Endpoint))
 }
 
 //export SetUserInfoEndpoint
 func SetUserInfoEndpoint(uid int, endpoint *C.char) {
-	ui := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	ui.Endpoint = core.Endpoint(string(C.GoString(endpoint)))
 	core.DB.Save(&ui)
 }
@@ -220,5 +245,112 @@ func GetPublicKeyFingerprint(armored *C.char) *C.char {
 
 //export SendMessage
 func SendMessage(uid int64, text *C.char) {
-	core.SendMessage(core.GetUserInfoByID(uint(uid)), core.MessageTypeText, C.GoString(text))
+	ui, err := core.GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	core.SendMessage(ui, core.MessageTypeText, C.GoString(text))
 }
+
+//export CreateFileStoreElement
+func CreateFileStoreElement(uid uint, fileInChatPath *C.char, localFilePath *C.char) int64 {
+	ui, err := core.GetUserInfoByID(uid)
+	if err != nil {
+		return -1
+	}
+	fi := core.CreateFileStoreElement(ui, "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro())
+	return int64(fi.ID)
+}
+
+//export GetFileStoreElementLocalPath
+func GetFileStoreElementLocalPath(fseId uint) *C.char {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(fse.LocalPath())
+	return C.CString(fse.LocalPath())
+}
+
+//export GetFileStoreElementIsDownloaded
+func GetFileStoreElementIsDownloaded(fseId uint) bool {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return fse.IsDownloaded()
+}
+
+//export GetFileStoreElementSizeBytes
+func GetFileStoreElementSizeBytes(fseId uint) int64 {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return fse.SizeBytes
+}
+
+//export GetFileStoreElementPath
+func GetFileStoreElementPath(fseId uint) *C.char {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(fse.Path)
+}
+
+//export SetFileStoreElementPath
+func SetFileStoreElementPath(fseId uint, newPath *C.char) {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fse.Path = C.GoString(newPath)
+	core.DB.Save(&fse)
+}
+
+//export GetFileStoreElementIsDeleted
+func GetFileStoreElementIsDeleted(fseId uint) bool {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return fse.IsDeleted
+}
+
+//export SetFileStoreElementIsDeleted
+func SetFileStoreElementIsDeleted(fseId uint, isDeleted bool) {
+	fse, err := core.GetFileStoreById(fseId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fse.IsDeleted = isDeleted
+	core.DB.Save(&fse)
+}
+
+//export GetUserInfoFileStoreElements
+func GetUserInfoFileStoreElements(UserInfoID int) *C.char {
+	ui, err := core.GetUserInfoByID(uint(UserInfoID))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	msgs := core.GetFileStoreElementsByUserInfo(ui)
+	var msgids []uint
+	for i := range msgs {
+		msgids = append(msgids, msgs[i].ID)
+	}
+	b, err := json.Marshal(msgids)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(string(b))
+}
+
+//FileStoreElement putFileStoreElement(
+//UserInfo ui, {
+//required File? localFile,
+//required String fileInChatPath,
+//required String? uuid,
+//required bool shouldFetch,
+//}) =>
+//throw UnimplementedError();
