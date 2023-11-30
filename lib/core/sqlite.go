@@ -38,6 +38,7 @@ func OpenSqlite(newStorePath string) {
 	log.Println("DB.AutoMigrate.QueuedEvent", DB.AutoMigrate(&QueuedEvent{}))
 	log.Println("DB.AutoMigrate.Message", DB.AutoMigrate(&Message{}))
 	log.Println("DB.AutoMigrate.FileStoreElement", DB.AutoMigrate(&FileStoreElement{}))
+	log.Println("DB.AutoMigrate.FileStoreElement", DB.AutoMigrate(&PrivateInfoS{}))
 	PrivateInfo.Refresh()
 	go queueRunner()
 	go fileStoreElementQueueRunner()
