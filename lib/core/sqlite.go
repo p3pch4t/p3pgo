@@ -20,7 +20,7 @@ func init() {
 }
 func OpenSqlite(newStorePath string) {
 	storePath = newStorePath
-
+	os.MkdirAll(storePath, 0750)
 	logPath = path.Join(storePath, "log.txt")
 	logFile, err := os.Create(logPath)
 	if err != nil {
@@ -30,7 +30,6 @@ func OpenSqlite(newStorePath string) {
 	log.SetOutput(mw)
 	log.Println("OpenSqlite(): logger setup!")
 	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
-	os.MkdirAll(storePath, 0750)
 	DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
