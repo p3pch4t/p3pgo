@@ -24,28 +24,29 @@ func HealthCheck() bool {
 	return true
 }
 
-//export InitStore
-func InitStore(storePath *C.char) bool {
-	core.OpenSqlite(C.GoString(storePath))
-	return true
+var a []*core.PrivateInfoS
+
+//export OpenPrivateInfo
+func OpenPrivateInfo(storePath *C.char, accountName *C.char) int {
+	pi := core.OpenPrivateInfo(C.GoString(storePath), C.GoString(accountName))
+	a = append(a, pi)
+	return len(a) - 1
 }
 
 //export ShowSetup
-func ShowSetup() bool {
-	core.PrivateInfo.Refresh()
-	log.Println("ShowSetup:", len(core.PrivateInfo.Passphrase))
-	return len(core.PrivateInfo.Passphrase) == 0
+func ShowSetup(piId int) bool {
+	return !a[piId].IsAccountReady()
 }
 
 //export CreateSelfInfo
-func CreateSelfInfo(username *C.char, email *C.char, bitSize int) bool {
-	core.PrivateInfo.Create(C.GoString(username), C.GoString(email), bitSize)
+func CreateSelfInfo(piId int, username *C.char, email *C.char, bitSize int) bool {
+	a[piId].Create(C.GoString(username), C.GoString(email), bitSize)
 	return true
 }
 
 //export GetAllUserInfo
-func GetAllUserInfo() *C.char {
-	ids := core.GetAllUserIDs()
+func GetAllUserInfo(piId int) *C.char {
+	ids := core.GetAllUserIDs(a[piId])
 	b, err := json.Marshal(ids)
 	if err != nil {
 		log.Fatalln(err)
@@ -54,8 +55,8 @@ func GetAllUserInfo() *C.char {
 }
 
 //export AddUserByPublicKey
-func AddUserByPublicKey(publickey *C.char, username *C.char, endpoint *C.char) int {
-	ui, err := core.CreateUserByPublicKey(C.GoString(publickey), C.GoString(username), core.Endpoint(C.GoString(endpoint)), true)
+func AddUserByPublicKey(piId int, publickey *C.char, username *C.char, endpoint *C.char) int {
+	ui, err := core.CreateUserByPublicKey(a[piId], C.GoString(publickey), C.GoString(username), core.Endpoint(C.GoString(endpoint)), true)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -63,12 +64,12 @@ func AddUserByPublicKey(publickey *C.char, username *C.char, endpoint *C.char) i
 }
 
 //export ForceSendIntroduceEvent
-func ForceSendIntroduceEvent(uid int) bool {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func ForceSendIntroduceEvent(piId int, uid int) bool {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	ui.SendIntroduceEvent()
+	ui.SendIntroduceEvent(a[piId])
 	return true
 }
 
@@ -89,12 +90,12 @@ func GetUserDetailsByURL(url *C.char) *C.char {
 }
 
 //export GetUserInfoMessages
-func GetUserInfoMessages(UserInfoID int) *C.char {
-	ui, err := core.GetUserInfoByID(uint(UserInfoID))
+func GetUserInfoMessages(piId int, UserInfoID int) *C.char {
+	ui, err := core.GetUserInfoByID(a[piId], uint(UserInfoID))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	msgs := core.GetMessagesByUserInfo(ui)
+	msgs := core.GetMessagesByUserInfo(a[piId], ui)
 	var msgids []uint
 	for i := range msgs {
 		msgids = append(msgids, msgs[i].ID)
@@ -109,34 +110,34 @@ func GetUserInfoMessages(UserInfoID int) *C.char {
 // ---Message
 
 //export GetMessageType
-func GetMessageType(msgID int) *C.char {
-	//msg := core.GetMessageByID(msgID)
+func GetMessageType(piId int, msgID int) *C.char {
+	//msg := core.GetMessageByID(a[piId], msgID)
 	return C.CString(string(core.MessageTypeText))
 }
 
 //export GetMessageText
-func GetMessageText(msgID int) *C.char {
-	msg := core.GetMessageByID(msgID)
+func GetMessageText(piId int, msgID int) *C.char {
+	msg := core.GetMessageByID(a[piId], msgID)
 	return C.CString(msg.Body)
 }
 
 //export GetMessageReceivedTimestamp
-func GetMessageReceivedTimestamp(msgID int) int64 {
-	msg := core.GetMessageByID(msgID)
+func GetMessageReceivedTimestamp(piId int, msgID int) int64 {
+	msg := core.GetMessageByID(a[piId], msgID)
 	return msg.CreatedAt.UnixMicro()
 }
 
 //export GetMessageIsIncoming
-func GetMessageIsIncoming(msgID int) bool {
-	msg := core.GetMessageByID(msgID)
+func GetMessageIsIncoming(piId int, msgID int) bool {
+	msg := core.GetMessageByID(a[piId], msgID)
 	return msg.Incoming
 }
 
 // ---UserInfo
 
 //export GetUserInfoId
-func GetUserInfoId(uid int) int64 {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func GetUserInfoId(piId int, uid int) int64 {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -144,13 +145,13 @@ func GetUserInfoId(uid int) int64 {
 }
 
 //export GetPrivateInfoId
-func GetPrivateInfoId() int64 {
-	return int64(core.PrivateInfo.ID)
+func GetPrivateInfoId(piId int) int64 {
+	return int64(a[piId].ID)
 }
 
 //export GetUserInfoPublicKeyArmored
-func GetUserInfoPublicKeyArmored(uid int) *C.char {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func GetUserInfoPublicKeyArmored(piId int, uid int) *C.char {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -158,13 +159,13 @@ func GetUserInfoPublicKeyArmored(uid int) *C.char {
 }
 
 //export GetPrivateInfoPublicKeyArmored
-func GetPrivateInfoPublicKeyArmored() *C.char {
-	return C.CString(core.PrivateInfo.PublicKey)
+func GetPrivateInfoPublicKeyArmored(piId int) *C.char {
+	return C.CString(a[piId].PublicKey)
 }
 
 //export GetUserInfoUsername
-func GetUserInfoUsername(uid int) *C.char {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func GetUserInfoUsername(piId int, uid int) *C.char {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -173,36 +174,36 @@ func GetUserInfoUsername(uid int) *C.char {
 }
 
 //export GetPrivateInfoUsername
-func GetPrivateInfoUsername() *C.char {
-	return C.CString(core.PrivateInfo.Username)
+func GetPrivateInfoUsername(piId int) *C.char {
+	return C.CString(a[piId].Username)
 }
 
 //export SetUserInfoUsername
-func SetUserInfoUsername(uid int, username *C.char) {
+func SetUserInfoUsername(piId int, uid int, username *C.char) {
 	username0 := C.GoString(username)
-	ui, err := core.GetUserInfoByID(uint(uid))
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	ui.Username = username0
-	core.DB.Save(&ui)
+	a[piId].DB.Save(&ui)
 }
 
 //export SetPrivateInfoUsername
-func SetPrivateInfoUsername(username *C.char) {
-	core.PrivateInfo.Username = C.GoString(username)
-	core.DB.Save(&core.PrivateInfo)
+func SetPrivateInfoUsername(piId int, username *C.char) {
+	a[piId].Username = C.GoString(username)
+	a[piId].DB.Save(a[piId])
 }
 
 //export SetPrivateInfoEepsiteDomain
-func SetPrivateInfoEepsiteDomain(eepsite *C.char) {
-	core.PrivateInfo.Endpoint = core.Endpoint("i2p://" + string(C.GoString(eepsite)) + "/")
-	core.DB.Save(&core.PrivateInfo)
+func SetPrivateInfoEepsiteDomain(piId int, eepsite *C.char) {
+	a[piId].Endpoint = core.Endpoint("i2p://" + string(C.GoString(eepsite)) + "/")
+	a[piId].DB.Save(a[piId])
 }
 
 //export GetUserInfoEndpoint
-func GetUserInfoEndpoint(uid int) *C.char {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func GetUserInfoEndpoint(piId int, uid int) *C.char {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -210,24 +211,24 @@ func GetUserInfoEndpoint(uid int) *C.char {
 }
 
 //export SetUserInfoEndpoint
-func SetUserInfoEndpoint(uid int, endpoint *C.char) {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func SetUserInfoEndpoint(piId int, uid int, endpoint *C.char) {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	ui.Endpoint = core.Endpoint(string(C.GoString(endpoint)))
-	core.DB.Save(&ui)
+	a[piId].DB.Save(&ui)
 }
 
 //export GetPrivateInfoEndpoint
-func GetPrivateInfoEndpoint() *C.char {
-	return C.CString(string(core.PrivateInfo.Endpoint))
+func GetPrivateInfoEndpoint(piId int) *C.char {
+	return C.CString(string(a[piId].Endpoint))
 }
 
 //export SetPrivateInfoEndpoint
-func SetPrivateInfoEndpoint(endpoint *C.char) {
-	core.PrivateInfo.Endpoint = core.Endpoint(string(C.GoString(endpoint)))
-	core.DB.Save(&core.PrivateInfo)
+func SetPrivateInfoEndpoint(piId int, endpoint *C.char) {
+	a[piId].Endpoint = core.Endpoint(string(C.GoString(endpoint)))
+	a[piId].DB.Save(a[piId])
 }
 
 // ---PublicKey
@@ -244,28 +245,28 @@ func GetPublicKeyFingerprint(armored *C.char) *C.char {
 }
 
 //export SendMessage
-func SendMessage(uid int64, text *C.char) {
-	ui, err := core.GetUserInfoByID(uint(uid))
+func SendMessage(piId int, uid int64, text *C.char) {
+	ui, err := core.GetUserInfoByID(a[piId], uint(uid))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	core.SendMessage(ui, core.MessageTypeText, C.GoString(text))
+	core.SendMessage(a[piId], ui, core.MessageTypeText, C.GoString(text))
 }
 
 //export CreateFileStoreElement
-func CreateFileStoreElement(uid uint, fileInChatPath *C.char, localFilePath *C.char) int64 {
-	ui, err := core.GetUserInfoByID(uid)
+func CreateFileStoreElement(piId int, uid uint, fileInChatPath *C.char, localFilePath *C.char) int64 {
+	ui, err := core.GetUserInfoByID(a[piId], uid)
 	if err != nil {
 		return -1
 	}
-	fi := core.CreateFileStoreElement(ui.GetKeyID(), "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro())
-	fi.Announce()
+	fi := core.CreateFileStoreElement(a[piId], ui.GetKeyID(), "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro())
+	fi.Announce(a[piId])
 	return int64(fi.ID)
 }
 
 //export GetFileStoreElementLocalPath
-func GetFileStoreElementLocalPath(fseId uint) *C.char {
-	fse, err := core.GetFileStoreById(fseId)
+func GetFileStoreElementLocalPath(piId int, fseId uint) *C.char {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -274,8 +275,8 @@ func GetFileStoreElementLocalPath(fseId uint) *C.char {
 }
 
 //export GetFileStoreElementIsDownloaded
-func GetFileStoreElementIsDownloaded(fseId uint) bool {
-	fse, err := core.GetFileStoreById(fseId)
+func GetFileStoreElementIsDownloaded(piId int, fseId uint) bool {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -283,8 +284,8 @@ func GetFileStoreElementIsDownloaded(fseId uint) bool {
 }
 
 //export GetFileStoreElementSizeBytes
-func GetFileStoreElementSizeBytes(fseId uint) int64 {
-	fse, err := core.GetFileStoreById(fseId)
+func GetFileStoreElementSizeBytes(piId int, fseId uint) int64 {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -292,8 +293,8 @@ func GetFileStoreElementSizeBytes(fseId uint) int64 {
 }
 
 //export GetFileStoreElementPath
-func GetFileStoreElementPath(fseId uint) *C.char {
-	fse, err := core.GetFileStoreById(fseId)
+func GetFileStoreElementPath(piId int, fseId uint) *C.char {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -301,18 +302,18 @@ func GetFileStoreElementPath(fseId uint) *C.char {
 }
 
 //export SetFileStoreElementPath
-func SetFileStoreElementPath(fseId uint, newPath *C.char) {
-	fse, err := core.GetFileStoreById(fseId)
+func SetFileStoreElementPath(piId int, fseId uint, newPath *C.char) {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	fse.Path = C.GoString(newPath)
-	core.DB.Save(&fse)
+	a[piId].DB.Save(&fse)
 }
 
 //export GetFileStoreElementIsDeleted
-func GetFileStoreElementIsDeleted(fseId uint) bool {
-	fse, err := core.GetFileStoreById(fseId)
+func GetFileStoreElementIsDeleted(piId int, fseId uint) bool {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -320,22 +321,22 @@ func GetFileStoreElementIsDeleted(fseId uint) bool {
 }
 
 //export SetFileStoreElementIsDeleted
-func SetFileStoreElementIsDeleted(fseId uint, isDeleted bool) {
-	fse, err := core.GetFileStoreById(fseId)
+func SetFileStoreElementIsDeleted(piId int, fseId uint, isDeleted bool) {
+	fse, err := core.GetFileStoreById(a[piId], fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	fse.IsDeleted = isDeleted
-	core.DB.Save(&fse)
+	a[piId].DB.Save(&fse)
 }
 
 //export GetUserInfoFileStoreElements
-func GetUserInfoFileStoreElements(UserInfoID int) *C.char {
-	ui, err := core.GetUserInfoByID(uint(UserInfoID))
+func GetUserInfoFileStoreElements(piId int, UserInfoID int) *C.char {
+	ui, err := core.GetUserInfoByID(a[piId], uint(UserInfoID))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	msgs := core.GetFileStoreElementsByUserInfo(ui)
+	msgs := core.GetFileStoreElementsByUserInfo(a[piId], ui)
 	var msgids []uint
 	for i := range msgs {
 		msgids = append(msgids, msgs[i].ID)
@@ -346,12 +347,3 @@ func GetUserInfoFileStoreElements(UserInfoID int) *C.char {
 	}
 	return C.CString(string(b))
 }
-
-//FileStoreElement putFileStoreElement(
-//UserInfo ui, {
-//required File? localFile,
-//required String fileInChatPath,
-//required String? uuid,
-//required bool shouldFetch,
-//}) =>
-//throw UnimplementedError();

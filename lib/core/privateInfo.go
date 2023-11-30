@@ -11,23 +11,30 @@ import (
 
 type PrivateInfoS struct {
 	gorm.Model
-	ID         uint
-	Username   string
-	Bio        string
-	PrivateKey string
-	PublicKey  string
-	Passphrase []byte
-	Endpoint   Endpoint
+	ID          uint
+	Username    string
+	Bio         string
+	PrivateKey  string
+	PublicKey   string
+	AccountName string
+	Passphrase  []byte
+	Endpoint    Endpoint
+	DB          *gorm.DB `gorm:"-"`
 }
 
-var PrivateInfo = PrivateInfoS{ID: 0}
+var PrivateInfoLegacy = PrivateInfoS{ID: 0}
+
+func (pi *PrivateInfoS) IsAccountReady() bool {
+	pi.Refresh()
+	return len(pi.Passphrase) != 0
+}
 
 func (pi *PrivateInfoS) Refresh() {
-	DB.First(&PrivateInfo)
+	pi.DB.First(pi)
 }
 
 func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
-	DB.FirstOrCreate(pi)
+	pi.DB.FirstOrCreate(pi)
 	if len(pi.Passphrase) != 0 {
 		log.Fatalln("WARN: Unable to CreatePrivateInfo - because PrivateInfo is not empty.")
 		return
@@ -45,7 +52,7 @@ func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 		if err != nil {
 			log.Fatalln("Unable to generate privkey:", err)
 		}
-		DB.Save(&pi)
+		pi.DB.Save(&pi)
 	}
 	privKey, err := crypto.NewKeyFromArmored(pi.PrivateKey)
 	if err != nil {
@@ -58,8 +65,7 @@ func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 	}
 	pi.PublicKey = pubKey
 	pi.Username = privKey.GetFingerprint()
-	DB.Save(&pi)
-
+	pi.DB.Save(&pi)
 }
 
 func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err error) {
@@ -116,7 +122,7 @@ func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) strin
 		log.Fatalln(err)
 	}
 	var uis []UserInfo
-	DB.Find(&uis)
+	pi.DB.Find(&uis)
 	for i := range uis {
 		c, err := crypto.NewKeyRing(nil)
 		if err != nil {
@@ -149,7 +155,7 @@ func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
 		log.Fatalln(err)
 	}
 	var uis []UserInfo
-	DB.Find(&uis)
+	pi.DB.Find(&uis)
 	for i := range uis {
 		pk, err := crypto.NewKeyFromArmored(uis[i].Publickey)
 		if err != nil {

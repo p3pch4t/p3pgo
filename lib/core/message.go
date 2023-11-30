@@ -13,27 +13,27 @@ type Message struct {
 	Incoming bool
 }
 
-func GetMessageByID(msgID int) Message {
+func GetMessageByID(pi *PrivateInfoS, msgID int) Message {
 	var msg Message
-	DB.First(&msg, "id = ?", msgID)
+	pi.DB.First(&msg, "id = ?", msgID)
 	return msg
 }
 
-func GetMessagesByUserInfo(ui UserInfo) []Message {
+func GetMessagesByUserInfo(pi *PrivateInfoS, ui UserInfo) []Message {
 	var msgs []Message
-	DB.Where("key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&msgs)
+	pi.DB.Where("key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&msgs)
 	return msgs
 }
 
-func GetFileStoreElementsByUserInfo(ui UserInfo) []FileStoreElement {
+func GetFileStoreElementsByUserInfo(pi *PrivateInfoS, ui UserInfo) []FileStoreElement {
 	var fselms []FileStoreElement
-	DB.Where("internal_key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&fselms)
+	pi.DB.Where("internal_key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&fselms)
 	return fselms
 }
 
-func SendMessage(ui UserInfo, messageType MessageType, text string) {
+func SendMessage(pi *PrivateInfoS, ui UserInfo, messageType MessageType, text string) {
 	log.Println("SendMessage", ui.GetKeyID(), messageType)
-	DB.Save(&Message{KeyID: ui.GetKeyID(), Incoming: false, Body: text})
+	pi.DB.Save(&Message{KeyID: ui.GetKeyID(), Incoming: false, Body: text})
 	evt := Event{
 		InternalKeyID: ui.GetKeyID(),
 		EventType:     EventTypeMessage,
@@ -45,5 +45,5 @@ func SendMessage(ui UserInfo, messageType MessageType, text string) {
 		},
 		Uuid: "",
 	}
-	QueueEvent(evt, ui)
+	QueueEvent(pi, evt, ui)
 }

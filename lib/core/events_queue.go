@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func QueueEvent(evt Event, ui UserInfo) {
+func QueueEvent(pi *PrivateInfoS, evt Event, ui UserInfo) {
 	if evt.Uuid == "" {
 		evt.RandomizeUuid()
 	}
@@ -45,18 +45,18 @@ func QueueEvent(evt Event, ui UserInfo) {
 	}
 	// log.Println("QUEUED_EVENT: ", string(eventBody))
 	if evt.EventType != EventTypeIntroduce {
-		ret, err := PrivateInfo.EncryptSign(ui.Publickey, string(eventBody))
+		ret, err := pi.EncryptSign(ui.Publickey, string(eventBody))
 		if err != nil {
 			log.Println("Unable to EncryptSign:", err)
 			return
 		}
-		DB.Save(&QueuedEvent{
+		pi.DB.Save(&QueuedEvent{
 			Body:     []byte(ret),
 			Endpoint: ui.Endpoint,
 		})
 		return
 	}
-	DB.Save(&QueuedEvent{
+	pi.DB.Save(&QueuedEvent{
 		Body:     eventBody,
 		Endpoint: ui.Endpoint,
 	})

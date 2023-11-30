@@ -15,7 +15,7 @@ import (
 )
 
 // CreateFileStoreElement Creates or Updates FileStoreElement
-func CreateFileStoreElement(uiKeyId string, uuid string, path string, localFilePath string, modifyTime int64) FileStoreElement {
+func CreateFileStoreElement(pi *PrivateInfoS, uiKeyId string, uuid string, path string, localFilePath string, modifyTime int64) FileStoreElement {
 	log.Println(
 		"CreateFileStoreElement(", "\n",
 		"\tuiKeyId:", uiKeyId, "\n",
@@ -34,7 +34,7 @@ func CreateFileStoreElement(uiKeyId string, uuid string, path string, localFileP
 	if uuid == "" {
 		uuid = UUID.New().String()
 	} else {
-		DB.Find(&fi, "uuid = ?", uuid)
+		pi.DB.Find(&fi, "uuid = ?", uuid)
 	}
 
 	if path == "" {
@@ -70,13 +70,13 @@ func CreateFileStoreElement(uiKeyId string, uuid string, path string, localFileP
 	}
 	fi.Sha512sum = fmt.Sprintf("%x", sha_512.Sum(nil))
 
-	DB.Save(&fi)
+	pi.DB.Save(&fi)
 	return fi
 }
 
-func GetFileStoreById(id uint) (FileStoreElement, error) {
+func GetFileStoreById(pi *PrivateInfoS, id uint) (FileStoreElement, error) {
 	var fse FileStoreElement
-	DB.First(&fse, "ID = ?", id)
+	pi.DB.First(&fse, "ID = ?", id)
 	if fse.ID != id {
 		return fse, errors.New("unable to find given FileStoreElement")
 	}
@@ -109,9 +109,9 @@ func (fse *FileStoreElement) IsDownloaded() bool {
 	return false
 }
 
-func (fse *FileStoreElement) Refresh(ui UserInfo) {
+func (fse *FileStoreElement) Refresh(pi *PrivateInfoS, ui UserInfo) {
 	var fseNew FileStoreElement
-	DB.Find(&fseNew, "uuid = ? AND internal_key_id = ?", fse.Uuid, ui.GetKeyID())
+	pi.DB.Find(&fseNew, "uuid = ? AND internal_key_id = ?", fse.Uuid, ui.GetKeyID())
 	fse.InternalKeyID = fseNew.InternalKeyID
 	if fse.LocalPath() == "" {
 		f := fse.GetFile()
@@ -122,21 +122,22 @@ func (fse *FileStoreElement) Refresh(ui UserInfo) {
 	}
 }
 
-func (fse *FileStoreElement) UpdateContent(announce bool) {
+func (fse *FileStoreElement) UpdateContent(pi *PrivateInfoS, announce bool) {
 	if fse.IsDownloading {
 		log.Println("fse.UpdateContent() called when .IsDownloading == true. Don't do that.")
 		return
 	}
-	CreateFileStoreElement(fse.InternalKeyID, fse.Uuid, fse.Path, fse.LocalPath(), time.Now().UnixMicro())
+	CreateFileStoreElement(pi, fse.InternalKeyID, fse.Uuid, fse.Path, fse.LocalPath(), time.Now().UnixMicro())
 	if !announce {
 		return
 	}
-	fse.Announce()
+	fse.Announce(pi)
 }
 
-func (fse *FileStoreElement) Announce() {
-	ui, err := GetUserInfoByKeyID(fse.InternalKeyID)
+func (fse *FileStoreElement) Announce(pi *PrivateInfoS) {
+	ui, err := GetUserInfoByKeyID(pi, fse.InternalKeyID)
 	if err != nil {
+		log.Println(fse.InternalKeyID)
 		log.Fatalln(err)
 	}
 
@@ -144,7 +145,7 @@ func (fse *FileStoreElement) Announce() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	QueueEvent(Event{
+	QueueEvent(pi, Event{
 		InternalKeyID: ui.GetKeyID(),
 		EventType:     EventTypeFile,
 		Data: EventDataMixed{
@@ -203,10 +204,10 @@ func (fse *FileStoreElement) GetFile() *os.File {
 	return f
 }
 
-func fileStoreElementQueueRunner() {
+func fileStoreElementQueueRunner(pi *PrivateInfoS) {
 	for {
 		var felms []FileStoreElement
-		DB.Find(&felms)
+		pi.DB.Find(&felms)
 		for i := range felms {
 			if felms[i].IsDeleted {
 				// We don't care to update deleted files.
@@ -222,7 +223,7 @@ func fileStoreElementQueueRunner() {
 				continue
 			}
 			// In this case, we are supposed to push an update to the UserInfo
-			felms[i].UpdateContent(true)
+			felms[i].UpdateContent(pi, true)
 		}
 		time.Sleep(time.Second * 5)
 	}

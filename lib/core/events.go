@@ -88,16 +88,16 @@ type EventDataFile struct {
 	ModifyTime int64  `json:"modifyTime,omitempty"`
 }
 
-func (evt *Event) TryProcess() {
+func (evt *Event) TryProcess(pi *PrivateInfoS) {
 	switch evt.EventType {
 	case EventTypeIntroduce:
-		evt.tryProcessIntroduce()
+		evt.tryProcessIntroduce(pi)
 	case EventTypeIntroduceRequest:
-		evt.tryProcessIntroduceRequest()
+		evt.tryProcessIntroduceRequest(pi)
 	case EventTypeMessage:
-		evt.tryProcessMessage()
+		evt.tryProcessMessage(pi)
 	case EventTypeFile:
-		evt.tryProcessFile()
+		evt.tryProcessFile(pi)
 	default:
 		log.Println("WARN: Unhandled event, type:", evt.EventType)
 	}
@@ -105,12 +105,13 @@ func (evt *Event) TryProcess() {
 
 // EventTypeUnimplemented    EventType = "unimplemented"
 // EventTypeIntroduce        EventType = "introduce"
-func (evt *Event) tryProcessIntroduce() {
+func (evt *Event) tryProcessIntroduce(pi *PrivateInfoS) {
 	log.Println("evt.tryProcessIntroduce")
 	if evt.EventType != EventTypeIntroduce {
 		log.Fatalln("invalid type.")
 	}
 	ui, err := CreateUserByPublicKey(
+		pi,
 		evt.Data.EventDataIntroduce.PublicKey,
 		evt.Data.EventDataIntroduce.Username,
 		evt.Data.EventDataIntroduce.Endpoint,
@@ -120,7 +121,7 @@ func (evt *Event) tryProcessIntroduce() {
 }
 
 // EventTypeIntroduceRequest EventType = "introduce.request"
-func (evt *Event) tryProcessIntroduceRequest() {
+func (evt *Event) tryProcessIntroduceRequest(pi *PrivateInfoS) {
 	log.Println("evt.tryProcessIntroduceRequest")
 	if evt.EventType != EventTypeIntroduceRequest {
 		log.Fatalln("invalid type.")
@@ -131,7 +132,7 @@ func (evt *Event) tryProcessIntroduceRequest() {
 		return
 	}
 	var ui UserInfo
-	DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
+	pi.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
 	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
 	if err != nil {
 		log.Println("WARN: Unable to publickey.GetPublicKey()")
@@ -140,14 +141,14 @@ func (evt *Event) tryProcessIntroduceRequest() {
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
 	ui.Endpoint = evt.Data.EventDataIntroduceRequest.Endpoint
-	DB.Save(&ui)
-	QueueEvent(Event{
+	pi.DB.Save(&ui)
+	QueueEvent(pi, Event{
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				PublicKey: PrivateInfo.PublicKey,
-				Endpoint:  PrivateInfo.Endpoint,
-				Username:  PrivateInfo.Username,
+				PublicKey: pi.PublicKey,
+				Endpoint:  pi.Endpoint,
+				Username:  pi.Username,
 			},
 		},
 	},
@@ -155,7 +156,7 @@ func (evt *Event) tryProcessIntroduceRequest() {
 }
 
 // EventTypeMessage          EventType = "message"
-func (evt *Event) tryProcessMessage() {
+func (evt *Event) tryProcessMessage(pi *PrivateInfoS) {
 	log.Println("evt.tryProcessMessage")
 	if evt.InternalKeyID == "" {
 		log.Println("warn! unknown evt.InternalKeyID")
@@ -166,7 +167,7 @@ func (evt *Event) tryProcessMessage() {
 		evt.InternalKeyID = evt.InternalKeyID[len(evt.InternalKeyID)-16:]
 	}
 	log.Println("InternalKeyID:", evt.InternalKeyID)
-	DB.Save(&Message{
+	pi.DB.Save(&Message{
 		KeyID:    evt.InternalKeyID,
 		Body:     string(evt.Data.EventDataMessage.Text),
 		Incoming: true,
@@ -174,7 +175,7 @@ func (evt *Event) tryProcessMessage() {
 }
 
 // EventTypeFile             EventType = "file"
-func (evt *Event) tryProcessFile() {
+func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
 	log.Println("evt.tryProcessFile")
 	if evt.InternalKeyID == "" {
 		log.Println("warn! unknown evt.InternalKeyID")
@@ -188,6 +189,7 @@ func (evt *Event) tryProcessFile() {
 	f.Write(evt.Data.EventDataFile.Bytes)
 	defer f.Close()
 	CreateFileStoreElement(
+		pi,
 		StringToKeyID(evt.InternalKeyID),
 		evt.Data.EventDataFile.Uuid,
 		evt.Data.EventDataFile.Path,

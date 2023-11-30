@@ -1,6 +1,8 @@
 package core
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"io"
 	"log"
 	"os"
@@ -10,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
+// var DB *gorm.DB
 
 var storePath string = ""
 var logPath string = ""
@@ -18,8 +20,13 @@ var logPath string = ""
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
-func OpenSqlite(newStorePath string) {
-	storePath = newStorePath
+func GetMD5Hash(text string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(text))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+func OpenPrivateInfo(newStorePath string, account_name string) *PrivateInfoS {
+	storePath = path.Join(newStorePath, GetMD5Hash(account_name))
 	os.MkdirAll(storePath, 0750)
 	logPath = path.Join(storePath, "log.txt")
 	logFile, err := os.Create(logPath)
@@ -30,29 +37,31 @@ func OpenSqlite(newStorePath string) {
 	log.SetOutput(mw)
 	log.Println("OpenSqlite(): logger setup!")
 	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
-	DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
+	var pi = PrivateInfoS{AccountName: account_name}
+	pi.DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("DB.AutoMigrate.UserInfo", DB.AutoMigrate(&UserInfo{}))
-	log.Println("DB.AutoMigrate.QueuedEvent", DB.AutoMigrate(&QueuedEvent{}))
-	log.Println("DB.AutoMigrate.Message", DB.AutoMigrate(&Message{}))
-	log.Println("DB.AutoMigrate.FileStoreElement", DB.AutoMigrate(&FileStoreElement{}))
-	log.Println("DB.AutoMigrate.FileStoreElement", DB.AutoMigrate(&PrivateInfoS{}))
-	PrivateInfo.Refresh()
-	go queueRunner()
-	go fileStoreElementQueueRunner()
-	ensureProperUserInfo()
-	InitReachableLocal()
+	log.Println("DB.AutoMigrate.UserInfo", pi.DB.AutoMigrate(&UserInfo{}))
+	log.Println("DB.AutoMigrate.QueuedEvent", pi.DB.AutoMigrate(&QueuedEvent{}))
+	log.Println("DB.AutoMigrate.Message", pi.DB.AutoMigrate(&Message{}))
+	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
+	log.Println("DB.AutoMigrate.PrivateInfoS", pi.DB.AutoMigrate(&PrivateInfoS{}))
+	pi.Refresh()
+	go queueRunner(&pi)
+	go fileStoreElementQueueRunner(&pi)
+	ensureProperUserInfo(&pi)
+	InitReachableLocal(&pi)
+	return &pi
 }
 
-func ensureProperUserInfo() {
+func ensureProperUserInfo(pi *PrivateInfoS) {
 	var uis []UserInfo
-	DB.Find(&uis)
+	pi.DB.Find(&uis)
 	for i := range uis {
 		if uis[i].KeyID != uis[i].GetKeyID() {
 			uis[i].KeyID = uis[i].GetKeyID()
-			DB.Save(&uis[i])
+			pi.DB.Save(&uis[i])
 		}
 	}
 }

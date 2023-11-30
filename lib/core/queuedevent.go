@@ -28,11 +28,11 @@ type QueuedEvent struct {
 	Endpoint Endpoint
 }
 
-func (evt *QueuedEvent) Relay() {
+func (evt *QueuedEvent) Relay(pi *PrivateInfoS) {
 	host := evt.Endpoint.GetHost()
 	if host == "" || host == "http://:" {
 		log.Println("Removed event from queue:", evt.ID, "reason: host is not found")
-		DB.Delete(evt)
+		pi.DB.Delete(evt)
 		return
 	}
 	_, err := i2pPost(host, evt.Body)
@@ -41,11 +41,11 @@ func (evt *QueuedEvent) Relay() {
 		// DB.Delete(evt)
 		return
 	}
-	DB.Delete(evt)
+	pi.DB.Delete(evt)
 }
 
-func GetQueuedEvents() (evts []QueuedEvent) {
-	DB.Order("RANDOM()").Limit(50).Find(&evts)
+func GetQueuedEvents(pi *PrivateInfoS) (evts []QueuedEvent) {
+	pi.DB.Order("RANDOM()").Limit(50).Find(&evts)
 	return evts
 }
 
@@ -115,12 +115,23 @@ func i2pGet(uri string) ([]byte, error) {
 	return b, nil
 }
 
-func queueRunner() {
+func queueRunner(pi *PrivateInfoS) {
 	for {
-		for _, evt := range GetQueuedEvents() {
+		var emptyList = []Endpoint{}
+		for _, evt := range GetQueuedEvents(pi) {
+			found := false
+			for i := range emptyList {
+				if evt.Endpoint == emptyList[i] {
+					found = true
+				}
+			}
+			if found {
+				break
+			}
 			log.Println("processing event:", evt.ID)
-			evt.Relay()
+			emptyList = append(emptyList, evt.Endpoint)
+			evt.Relay(pi)
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 4)
 	}
 }

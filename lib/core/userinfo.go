@@ -42,46 +42,45 @@ func (ui *UserInfo) GetKeyID() string {
 	return keyid
 }
 
-func (ui *UserInfo) SendIntroduceEvent() {
+func (ui *UserInfo) SendIntroduceEvent(pi *PrivateInfoS) {
 	internalEvent := Event{
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				PublicKey: PrivateInfo.PublicKey,
-				Endpoint:  PrivateInfo.Endpoint,
-				Username:  PrivateInfo.Username,
+				PublicKey: pi.PublicKey,
+				Endpoint:  pi.Endpoint,
+				Username:  pi.Username,
 			},
 		},
 	}
-	QueueEvent(internalEvent,
-		*ui)
+	QueueEvent(pi, internalEvent, *ui)
 }
 
-func GetUserInfoByID(id uint) (UserInfo, error) {
+func GetUserInfoByID(pi *PrivateInfoS, id uint) (UserInfo, error) {
 	var ui UserInfo
-	DB.Find(&ui, "id = ?", id)
+	pi.DB.Find(&ui, "id = ?", id)
 	if id == 0 || ui.ID != id {
 		return UserInfo{ID: id}, errors.New("user with given id couldn't be found")
 	}
 	return ui, nil
 }
 
-func GetUserInfoByKeyID(keyid string) (UserInfo, error) {
+func GetUserInfoByKeyID(pi *PrivateInfoS, keyid string) (UserInfo, error) {
 	var ui UserInfo
 	keyid = StringToKeyID(keyid)
-	DB.Find(&ui, "key_id = ?", keyid)
+	pi.DB.Find(&ui, "key_id = ?", keyid)
 	if keyid == "" || ui.KeyID != keyid {
 		return UserInfo{KeyID: keyid}, errors.New("user with given key_id couldn't be found")
 	}
 	return ui, nil
 }
 
-func GetAllUserIDs() (UserInfoIDs []uint) {
+func GetAllUserIDs(pi *PrivateInfoS) (UserInfoIDs []uint) {
 	var uis []UserInfo
-	DB.Find(&uis)
+	pi.DB.Find(&uis)
 	for i := range uis {
 		if uis[i].Fingerprint == "" && uis[i].Publickey == "" {
-			DB.Delete(&uis[i])
+			pi.DB.Delete(&uis[i])
 			continue
 		}
 		UserInfoIDs = append(UserInfoIDs, uis[i].ID)
@@ -89,14 +88,14 @@ func GetAllUserIDs() (UserInfoIDs []uint) {
 	return UserInfoIDs
 }
 
-func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
+func CreateUserByPublicKey(pi *PrivateInfoS, publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
 	publicKey, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
 		log.Println("WARN: Unable to armor public key, returning.")
 		return UserInfo{}, errors.New("WARN: Unable to armor public key, returning")
 	}
 	var ui UserInfo
-	DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
+	pi.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
 	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
 	if err != nil {
 		log.Println("WARN: Unable to publickey.GetPublicKey()")
@@ -113,9 +112,9 @@ func CreateUserByPublicKey(publicKeyArmored string, username string, endpoint En
 	if ui.Endpoint == "" || endpoint != "" {
 		ui.Endpoint = Endpoint(endpoint)
 	}
-	DB.Save(&ui)
+	pi.DB.Save(&ui)
 	if shouldIntroduce {
-		ui.SendIntroduceEvent()
+		ui.SendIntroduceEvent(pi)
 	}
 	return ui, nil
 }
