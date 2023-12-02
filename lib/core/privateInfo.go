@@ -64,7 +64,7 @@ func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 		log.Fatalln("Unable to get armored public key", err)
 	}
 	pi.PublicKey = pubKey
-	pi.Username = privKey.GetFingerprint()
+	pi.Username = username
 	pi.DB.Save(&pi)
 }
 
