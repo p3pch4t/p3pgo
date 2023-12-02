@@ -22,17 +22,13 @@ type PrivateInfoS struct {
 	DB          *gorm.DB `gorm:"-"`
 }
 
-var PrivateInfoLegacy = PrivateInfoS{ID: 0}
-
 func (pi *PrivateInfoS) IsAccountReady() bool {
 	pi.Refresh()
 	return len(pi.Passphrase) != 0
 }
-
 func (pi *PrivateInfoS) Refresh() {
 	pi.DB.First(pi)
 }
-
 func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 	pi.DB.FirstOrCreate(pi)
 	if len(pi.Passphrase) != 0 {
@@ -67,7 +63,6 @@ func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 	pi.Username = username
 	pi.DB.Save(&pi)
 }
-
 func (pi *PrivateInfoS) Decrypt(armored string) (msg string, keyid string, err error) {
 	ciphertext, err := crypto.NewPGPMessageFromArmored(armored)
 
@@ -104,7 +99,6 @@ func (pi *PrivateInfoS) DecryptVerify(armored string, publickey string) (string,
 func (pi *PrivateInfoS) EncryptSign(pubkey string, body string) (string, error) {
 	return helper.EncryptSignMessageArmored(pubkey, pi.PrivateKey, pi.Passphrase, body)
 }
-
 func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) string {
 	privateKeyObj, err := crypto.NewKeyFromArmored(pi.PrivateKey)
 	if err != nil {
@@ -147,7 +141,6 @@ func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) strin
 	}
 	return ""
 }
-
 func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
 
 	c, err := crypto.NewKeyRing(nil)
@@ -170,7 +163,6 @@ func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
 	}
 	return c
 }
-
 func (pi *PrivateInfoS) GetDiscoveredUserInfo() DiscoveredUserInfo {
 	return DiscoveredUserInfo{
 		Name:      pi.Username,

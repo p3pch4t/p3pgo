@@ -27,8 +27,8 @@ func HealthCheck() bool {
 var a []*core.PrivateInfoS
 
 //export OpenPrivateInfo
-func OpenPrivateInfo(storePath *C.char, accountName *C.char) int {
-	pi := core.OpenPrivateInfo(C.GoString(storePath), C.GoString(accountName))
+func OpenPrivateInfo(storePath *C.char, accountName *C.char, endpointPath *C.char) int {
+	pi := core.OpenPrivateInfo(C.GoString(storePath), C.GoString(accountName), C.GoString(endpointPath))
 	a = append(a, pi)
 	return len(a) - 1
 }

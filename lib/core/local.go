@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -13,25 +14,94 @@ import (
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
-func InitReachableLocal(pi *PrivateInfoS) {
-	r := chi.NewRouter()
+
+var r *chi.Mux
+
+var IsLocalServerRunning = false
+
+func StartLocalServer() {
+	if IsLocalServerRunning {
+		return
+	}
+	IsLocalServerRunning = true
+	r = chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		b, err := json.Marshal(pi.GetDiscoveredUserInfo())
+	r.Get("/", getHandleGet())
+	r.Post("/", getHandlePost())
+	r.Get("/*", getHandleGet())
+	r.Post("/*", getHandlePost())
+	go func() {
+		log.Println("starting on :3893")
+		err := http.ListenAndServe(":3893", r)
 		if err != nil {
-			w.Write([]byte("an error occurred, and response couldn't get generated."))
+			log.Fatalln(err)
+		}
+	}()
+}
+
+func getPrivateInfoByPath(path string) (*PrivateInfoS, error) {
+	if len(path) == 0 {
+		path = "/"
+	}
+
+	pi, ok := privateInfoMap[path[1:]]
+	if !ok {
+		return &PrivateInfoS{}, errors.New("unable to find requested path")
+	}
+
+	return pi, nil
+}
+
+func getHandleGet() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("GET", r.RequestURI)
+		pi, err := getPrivateInfoByPath(r.RequestURI)
+		if err != nil {
+			_, err := w.Write([]byte(err.Error()))
+			if err != nil {
+				log.Println(err)
+			}
 			return
 		}
-		w.Write(b)
-	})
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-		// read body
+		b, err := json.Marshal(pi.GetDiscoveredUserInfo())
+		if err != nil {
+			_, err := w.Write([]byte("an error occurred, and response couldn't get generated."))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
+		_, err = w.Write(b)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func getHandlePost() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		pi, err := getPrivateInfoByPath(r.RequestURI)
+		if err != nil {
+			_, err := w.Write([]byte(err.Error()))
+			if err != nil {
+				log.Println(err)
+			}
+			return
+		}
 		b, err := io.ReadAll(r.Body)
-		defer r.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Println(err)
+			}
+		}(r.Body)
 		if err != nil && err != io.EOF {
 			log.Println("[WARN]: Unable to read:", err)
 			w.WriteHeader(500)
-			w.Write([]byte("Internal server error"))
+			_, err := w.Write([]byte("Internal server error"))
+			if err != nil {
+				log.Println(err)
+			}
 			return
 		}
 		log.Println("processString")
@@ -39,14 +109,15 @@ func InitReachableLocal(pi *PrivateInfoS) {
 		for i := range evts {
 			evts[i].TryProcess(pi)
 		}
-	})
-	go func() {
-		err := http.ListenAndServe(":3893", r)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}()
+	}
 }
+
+var privateInfoMap = make(map[string]*PrivateInfoS)
+
+func (pi *PrivateInfoS) InitReachableLocal(path string) {
+	privateInfoMap[path] = pi
+}
+
 func processString(pi *PrivateInfoS, evt string, keyid string) (evts []Event) {
 	//log.Println("str:", evt)
 	// json decode

@@ -25,9 +25,9 @@ func GetMD5Hash(text string) string {
 	hasher.Write([]byte(text))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
-func OpenPrivateInfo(newStorePath string, account_name string) *PrivateInfoS {
-	storePath = path.Join(newStorePath, GetMD5Hash(account_name))
-	os.MkdirAll(storePath, 0750)
+func OpenPrivateInfo(newStorePath string, accountName string, endpointPath string) *PrivateInfoS {
+	storePath = path.Join(newStorePath, GetMD5Hash(accountName))
+	_ = os.MkdirAll(storePath, 0750)
 	logPath = path.Join(storePath, "log.txt")
 	logFile, err := os.Create(logPath)
 	if err != nil {
@@ -37,7 +37,7 @@ func OpenPrivateInfo(newStorePath string, account_name string) *PrivateInfoS {
 	log.SetOutput(mw)
 	log.Println("OpenSqlite(): logger setup!")
 	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
-	var pi = PrivateInfoS{AccountName: account_name}
+	var pi = PrivateInfoS{AccountName: accountName}
 	pi.DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
@@ -51,7 +51,8 @@ func OpenPrivateInfo(newStorePath string, account_name string) *PrivateInfoS {
 	go queueRunner(&pi)
 	go fileStoreElementQueueRunner(&pi)
 	ensureProperUserInfo(&pi)
-	InitReachableLocal(&pi)
+	StartLocalServer()
+	pi.InitReachableLocal(endpointPath)
 	return &pi
 }
 
