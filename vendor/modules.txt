@@ -29,6 +29,10 @@ github.com/ProtonMail/gopenpgp/v2/constants
 github.com/ProtonMail/gopenpgp/v2/crypto
 github.com/ProtonMail/gopenpgp/v2/helper
 github.com/ProtonMail/gopenpgp/v2/internal
+# github.com/cavaliergopher/grab/v3 v3.0.1
+## explicit; go 1.14
+github.com/cavaliergopher/grab/v3
+github.com/cavaliergopher/grab/v3/pkg/bps
 # github.com/cloudflare/circl v1.3.3
 ## explicit; go 1.19
 github.com/cloudflare/circl/dh/x25519
