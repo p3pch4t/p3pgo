@@ -79,9 +79,7 @@ func getHandleGet() func(w http.ResponseWriter, r *http.Request) {
 		var fselist []FileStoreElement
 		pi.DB.Where("is_deleted = false").Find(&fselist)
 		for i := range fselist {
-			log.Println("file:", r.RequestURI, fselist[i].HttpRequestPart())
 			if strings.HasSuffix(r.RequestURI, fselist[i].HttpRequestPart()) {
-				log.Println("we are serving a file")
 				http.ServeFile(w, r, fselist[i].LocalPath())
 				return
 			}
