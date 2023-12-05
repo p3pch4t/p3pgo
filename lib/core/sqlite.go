@@ -49,7 +49,7 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("DB.AutoMigrate.PrivateInfoS", pi.DB.AutoMigrate(&PrivateInfoS{}))
 	pi.Refresh()
 	go queueRunner(&pi)
-	go fileStoreElementQueueRunner(&pi)
+	go pi.fileStoreElementQueueRunner()
 	ensureProperUserInfo(&pi)
 	StartLocalServer()
 	pi.InitReachableLocal(endpointPath)

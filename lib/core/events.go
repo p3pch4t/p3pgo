@@ -66,8 +66,9 @@ type EventDataIntroduceRequest struct {
 	Endpoint      Endpoint `json:"endpoint,omitempty"`
 }
 type EventDataMessage struct {
-	Text string      `json:"text,omitempty"`
-	Type MessageType `json:"type,omitempty"`
+	Text    string      `json:"text,omitempty"`
+	MsgUUID string      `json:"msguuid,omitempty"`
+	Type    MessageType `json:"type,omitempty"`
 }
 
 type EventDataFile struct {
@@ -109,6 +110,9 @@ func (evt *Event) tryProcessIntroduce(pi *PrivateInfoS) {
 		false,
 	)
 	log.Println("new introduction:", evt.Data.EventDataIntroduce.Username, ui.Username, err)
+	for i := range pi.IntroduceCallback {
+		pi.IntroduceCallback[i](pi, ui, evt)
+	}
 }
 
 // EventTypeIntroduceRequest EventType = "introduce.request"
@@ -158,11 +162,20 @@ func (evt *Event) tryProcessMessage(pi *PrivateInfoS) {
 		evt.InternalKeyID = evt.InternalKeyID[len(evt.InternalKeyID)-16:]
 	}
 	log.Println("InternalKeyID:", evt.InternalKeyID)
-	pi.DB.Save(&Message{
+	msg := &Message{
 		KeyID:    evt.InternalKeyID,
 		Body:     string(evt.Data.EventDataMessage.Text),
 		Incoming: true,
-	})
+	}
+	pi.DB.Save(msg)
+	ui, err := pi.GetUserInfoByKeyID(evt.InternalKeyID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for i := range pi.MessageCallback {
+		pi.MessageCallback[i](pi, ui, evt, msg)
+	}
 }
 
 // EventTypeFile             EventType = "file"
@@ -173,7 +186,7 @@ func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
 		evt.InternalKeyID = "___UNKNOWN___"
 		return
 	}
-	pi.CreateFileStoreElement(
+	fse := pi.CreateFileStoreElement(
 		StringToKeyID(evt.InternalKeyID),
 		evt.Data.EventDataFile.Uuid,
 		evt.Data.EventDataFile.Path,
@@ -181,4 +194,12 @@ func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
 		evt.Data.EventDataFile.ModifyTime,
 		evt.Data.EventDataFile.HttpPath,
 	)
+	ui, err := pi.GetUserInfoByKeyID(evt.InternalKeyID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for i := range pi.FileStoreElementCallback {
+		pi.FileStoreElementCallback[i](pi, ui, evt, &fse)
+	}
 }

@@ -93,7 +93,7 @@ func (pi *PrivateInfoS) CreateFileStoreElement(uiKeyId string, uuid string, path
 	return fi
 }
 
-func GetFileStoreById(pi *PrivateInfoS, id uint) (FileStoreElement, error) {
+func (pi *PrivateInfoS) GetFileStoreById(id uint) (FileStoreElement, error) {
 	var fse FileStoreElement
 	pi.DB.First(&fse, "ID = ?", id)
 	if fse.ID != id {
@@ -247,7 +247,7 @@ func (fse *FileStoreElement) GetFile() *os.File {
 	return f
 }
 
-func fileStoreElementQueueRunner(pi *PrivateInfoS) {
+func (pi *PrivateInfoS) fileStoreElementQueueRunner() {
 	for {
 		var felms []FileStoreElement
 		pi.DB.Find(&felms)
@@ -347,6 +347,7 @@ OuterLoop:
 					log.Println(err)
 				}
 				// file downloaded
+				//TODO: merge 2 .xdc.update.jsonp files.
 				log.Println("File downloaded!")
 				fse.IsDownloading = false
 				fse.ExternalHttpPath = ""

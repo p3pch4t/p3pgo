@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"log"
-	"net/http"
-	"time"
-
 	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
+	"github.com/google/uuid"
+	"log"
 )
 
 func init() {
@@ -22,8 +19,9 @@ func main() {
 	evt := core.Event{
 		EventType: core.EventTypeMessage,
 		Data: core.EventDataMixed{EventDataMessage: core.EventDataMessage{
-			Text: "Message Text",
-			Type: core.MessageTypeText,
+			Text:    "Message Text",
+			Type:    core.MessageTypeText,
+			MsgUUID: uuid.NewString(),
 		}},
 	}
 	evt.RandomizeUuid()
@@ -33,8 +31,4 @@ func main() {
 	}
 	log.Println(string(b))
 	return
-	time.Sleep(time.Millisecond * 250)
-	log.Println("Sending:", len(b))
-	http.Post("http://127.0.0.1:3000/", "application/json", bytes.NewReader(b))
-	time.Sleep(time.Second * 3)
 }

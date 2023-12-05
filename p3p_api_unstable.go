@@ -95,7 +95,7 @@ func GetUserInfoMessages(piId int, UserInfoID int) *C.char {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	msgs := core.GetMessagesByUserInfo(a[piId], ui)
+	msgs := a[piId].GetMessagesByUserInfo(ui)
 	var msgids []uint
 	for i := range msgs {
 		msgids = append(msgids, msgs[i].ID)
@@ -117,19 +117,19 @@ func GetMessageType(piId int, msgID int) *C.char {
 
 //export GetMessageText
 func GetMessageText(piId int, msgID int) *C.char {
-	msg := core.GetMessageByID(a[piId], msgID)
+	msg := a[piId].GetMessageByID(msgID)
 	return C.CString(msg.Body)
 }
 
 //export GetMessageReceivedTimestamp
 func GetMessageReceivedTimestamp(piId int, msgID int) int64 {
-	msg := core.GetMessageByID(a[piId], msgID)
+	msg := a[piId].GetMessageByID(msgID)
 	return msg.CreatedAt.UnixMicro()
 }
 
 //export GetMessageIsIncoming
 func GetMessageIsIncoming(piId int, msgID int) bool {
-	msg := core.GetMessageByID(a[piId], msgID)
+	msg := a[piId].GetMessageByID(msgID)
 	return msg.Incoming
 }
 
@@ -250,7 +250,7 @@ func SendMessage(piId int, uid int64, text *C.char) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	core.SendMessage(a[piId], ui, core.MessageTypeText, C.GoString(text))
+	a[piId].SendMessage(ui, core.MessageTypeText, C.GoString(text))
 }
 
 //export CreateFileStoreElement
@@ -266,7 +266,7 @@ func CreateFileStoreElement(piId int, uid uint, fileInChatPath *C.char, localFil
 
 //export GetFileStoreElementLocalPath
 func GetFileStoreElementLocalPath(piId int, fseId uint) *C.char {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -276,7 +276,7 @@ func GetFileStoreElementLocalPath(piId int, fseId uint) *C.char {
 
 //export GetFileStoreElementIsDownloaded
 func GetFileStoreElementIsDownloaded(piId int, fseId uint) bool {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -285,7 +285,7 @@ func GetFileStoreElementIsDownloaded(piId int, fseId uint) bool {
 
 //export GetFileStoreElementSizeBytes
 func GetFileStoreElementSizeBytes(piId int, fseId uint) int64 {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -294,7 +294,7 @@ func GetFileStoreElementSizeBytes(piId int, fseId uint) int64 {
 
 //export GetFileStoreElementPath
 func GetFileStoreElementPath(piId int, fseId uint) *C.char {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -303,7 +303,7 @@ func GetFileStoreElementPath(piId int, fseId uint) *C.char {
 
 //export SetFileStoreElementPath
 func SetFileStoreElementPath(piId int, fseId uint, newPath *C.char) {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -313,7 +313,7 @@ func SetFileStoreElementPath(piId int, fseId uint, newPath *C.char) {
 
 //export GetFileStoreElementIsDeleted
 func GetFileStoreElementIsDeleted(piId int, fseId uint) bool {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -322,7 +322,7 @@ func GetFileStoreElementIsDeleted(piId int, fseId uint) bool {
 
 //export SetFileStoreElementIsDeleted
 func SetFileStoreElementIsDeleted(piId int, fseId uint, isDeleted bool) {
-	fse, err := core.GetFileStoreById(a[piId], fseId)
+	fse, err := a[piId].GetFileStoreById(fseId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -336,7 +336,7 @@ func GetUserInfoFileStoreElements(piId int, UserInfoID int) *C.char {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	msgs := core.GetFileStoreElementsByUserInfo(a[piId], ui)
+	msgs := a[piId].GetFileStoreElementsByUserInfo(ui)
 	var msgids []uint
 	for i := range msgs {
 		msgids = append(msgids, msgs[i].ID)

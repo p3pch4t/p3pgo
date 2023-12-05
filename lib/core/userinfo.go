@@ -108,7 +108,7 @@ func (pi *PrivateInfoS) CreateUserByPublicKey(publicKeyArmored string, username 
 	} else {
 		ui.Username = username
 	}
-
+	ui.KeyID = ui.GetKeyID()
 	if ui.Endpoint == "" || endpoint != "" {
 		ui.Endpoint = Endpoint(endpoint)
 	}
