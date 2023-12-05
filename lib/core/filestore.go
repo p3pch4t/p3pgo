@@ -355,17 +355,6 @@ OuterLoop:
 				break OuterLoop
 			}
 		}
-		err := resp.Err()
-		if err != nil {
-			log.Println("dl:", err)
-			b, err := resp.Bytes()
-
-			log.Println(string(b), err)
-			mut.Unlock()
-			return
-		}
-		log.Printf("\t%v\n", resp.HTTPResponse.Status)
-
 	}
 	mut.Unlock()
 }
