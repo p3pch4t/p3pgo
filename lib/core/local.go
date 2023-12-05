@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -39,48 +40,78 @@ func StartLocalServer() {
 	}()
 }
 
-func getPrivateInfoByPath(path string) (*PrivateInfoS, error) {
+func getPrivateInfoByPath(path string) (pi *PrivateInfoS, pathpart string, err error) {
 	if len(path) == 0 {
 		path = "/"
 	}
+	path = path[1:]
 
-	pi, ok := privateInfoMap[path[1:]]
+	ind := strings.Index(path, "/")
+	if ind != -1 {
+		path = path[0:ind]
+	} else {
+		path = path[0:]
+	}
+	log.Println("path:", path)
+	pi, ok := privateInfoMap[path]
 	if !ok {
-		return &PrivateInfoS{}, errors.New("unable to find requested path")
+		return &PrivateInfoS{}, path, errors.New("unable to find requested path")
 	}
 
-	return pi, nil
+	return pi, path, nil
 }
 
 func getHandleGet() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("GET", r.RequestURI)
-		pi, err := getPrivateInfoByPath(r.RequestURI)
+		pi, pathpart, err := getPrivateInfoByPath(r.RequestURI)
 		if err != nil {
+			log.Println(err)
+			w.WriteHeader(500)
 			_, err := w.Write([]byte(err.Error()))
 			if err != nil {
 				log.Println(err)
 			}
 			return
 		}
-		b, err := json.Marshal(pi.GetDiscoveredUserInfo())
-		if err != nil {
-			_, err := w.Write([]byte("an error occurred, and response couldn't get generated."))
-			if err != nil {
-				log.Println(err)
+		log.Println(pathpart, r.RequestURI)
+		// Are we looking for a file?
+		var fselist []FileStoreElement
+		pi.DB.Where("is_deleted = false").Find(&fselist)
+		for i := range fselist {
+			log.Println("file:", r.RequestURI, fselist[i].HttpRequestPart())
+			if strings.HasSuffix(r.RequestURI, fselist[i].HttpRequestPart()) {
+				log.Println("we are serving a file")
+				http.ServeFile(w, r, fselist[i].LocalPath())
+				return
 			}
-			return
 		}
-		_, err = w.Write(b)
+		// we are not looking for a file
+
+		processDiscovery(pi, w, r)
+
+	}
+}
+
+func processDiscovery(pi *PrivateInfoS, w http.ResponseWriter, r *http.Request) {
+	b, err := json.Marshal(pi.GetDiscoveredUserInfo())
+	if err != nil {
+		w.WriteHeader(500)
+		_, err := w.Write([]byte("an error occurred, and response couldn't get generated."))
 		if err != nil {
 			log.Println(err)
 		}
+		return
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		log.Println(err)
 	}
 }
 
 func getHandlePost() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		pi, err := getPrivateInfoByPath(r.RequestURI)
+		pi, _, err := getPrivateInfoByPath(r.RequestURI)
 		if err != nil {
 			_, err := w.Write([]byte(err.Error()))
 			if err != nil {

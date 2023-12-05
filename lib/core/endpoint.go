@@ -21,7 +21,9 @@ func (e *Endpoint) GetHost() string {
 		return ""
 	}
 	// ${urip.host}:${urip.port}${urip.path}${urip.query}
-	return "http://" + uri.Host + uri.Path + uri.RawQuery
+	host := "http://" + uri.Host + uri.Path + uri.RawQuery
+	log.Println("GetHost:", host)
+	return host
 }
 func (e *Endpoint) GetExtra() string {
 	uri, err := url.Parse(string(*e))

@@ -56,7 +56,7 @@ func (ui *UserInfo) SendIntroduceEvent(pi *PrivateInfoS) {
 	QueueEvent(pi, internalEvent, *ui)
 }
 
-func GetUserInfoByID(pi *PrivateInfoS, id uint) (UserInfo, error) {
+func (pi *PrivateInfoS) GetUserInfoByID(id uint) (UserInfo, error) {
 	var ui UserInfo
 	pi.DB.Find(&ui, "id = ?", id)
 	if id == 0 || ui.ID != id {
@@ -65,7 +65,7 @@ func GetUserInfoByID(pi *PrivateInfoS, id uint) (UserInfo, error) {
 	return ui, nil
 }
 
-func GetUserInfoByKeyID(pi *PrivateInfoS, keyid string) (UserInfo, error) {
+func (pi *PrivateInfoS) GetUserInfoByKeyID(keyid string) (UserInfo, error) {
 	var ui UserInfo
 	keyid = StringToKeyID(keyid)
 	pi.DB.Find(&ui, "key_id = ?", keyid)
@@ -75,7 +75,7 @@ func GetUserInfoByKeyID(pi *PrivateInfoS, keyid string) (UserInfo, error) {
 	return ui, nil
 }
 
-func GetAllUserIDs(pi *PrivateInfoS) (UserInfoIDs []uint) {
+func (pi *PrivateInfoS) GetAllUserIDs() (UserInfoIDs []uint) {
 	var uis []UserInfo
 	pi.DB.Find(&uis)
 	for i := range uis {
@@ -88,7 +88,7 @@ func GetAllUserIDs(pi *PrivateInfoS) (UserInfoIDs []uint) {
 	return UserInfoIDs
 }
 
-func CreateUserByPublicKey(pi *PrivateInfoS, publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
+func (pi *PrivateInfoS) CreateUserByPublicKey(publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
 	publicKey, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
 		log.Println("WARN: Unable to armor public key, returning.")

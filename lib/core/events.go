@@ -2,7 +2,6 @@ package core
 
 import (
 	"log"
-	"os"
 	"strings"
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
@@ -72,16 +71,9 @@ type EventDataMessage struct {
 }
 
 type EventDataFile struct {
-	Uuid string `json:"file_uuid,omitempty"`
-	// according to golang docs
-	// Array and slice values encode as JSON arrays, except that []byte encodes
-	// as a base64-encoded string, and a nil slice encodes as the null JSON object.
-	// https://pkg.go.dev/encoding/json#Marshal
-	// So this should work just fine with p3p.dart
-	// TODO: Check if it actually does.
-	Bytes []byte `json:"file_bytes,omitempty"`
-	//Path - is the in chat path, eg /Apps/Calendar.xdc
-	Path       string `json:"path,omitempty"`
+	Uuid       string `json:"file_uuid,omitempty"`
+	HttpPath   string `json:"http_path,omitempty"`
+	Path       string `json:"path,omitempty"` // the in chat path, eg /Apps/Calendar.xdc
 	Sha512sum  string `json:"sha512sum,omitempty"`
 	SizeBytes  int64  `json:"sizeBytes,omitempty"`
 	IsDeleted  bool   `json:"isDeleted,omitempty"`
@@ -110,8 +102,7 @@ func (evt *Event) tryProcessIntroduce(pi *PrivateInfoS) {
 	if evt.EventType != EventTypeIntroduce {
 		log.Fatalln("invalid type.")
 	}
-	ui, err := CreateUserByPublicKey(
-		pi,
+	ui, err := pi.CreateUserByPublicKey(
 		evt.Data.EventDataIntroduce.PublicKey,
 		evt.Data.EventDataIntroduce.Username,
 		evt.Data.EventDataIntroduce.Endpoint,
@@ -182,19 +173,12 @@ func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
 		evt.InternalKeyID = "___UNKNOWN___"
 		return
 	}
-	f, err := os.CreateTemp(storePath, "tmp")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	f.Write(evt.Data.EventDataFile.Bytes)
-	defer f.Close()
-	CreateFileStoreElement(
-		pi,
+	pi.CreateFileStoreElement(
 		StringToKeyID(evt.InternalKeyID),
 		evt.Data.EventDataFile.Uuid,
 		evt.Data.EventDataFile.Path,
-		f.Name(),
+		"",
 		evt.Data.EventDataFile.ModifyTime,
+		evt.Data.EventDataFile.HttpPath,
 	)
-	//	fse.UpdateContent(false)
 }

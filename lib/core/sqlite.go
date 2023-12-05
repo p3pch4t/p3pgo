@@ -53,6 +53,7 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	ensureProperUserInfo(&pi)
 	StartLocalServer()
 	pi.InitReachableLocal(endpointPath)
+	go pi.FileStoreElementDownloadLoop()
 	return &pi
 }
 
@@ -61,6 +62,7 @@ func ensureProperUserInfo(pi *PrivateInfoS) {
 	pi.DB.Find(&uis)
 	for i := range uis {
 		if uis[i].KeyID != uis[i].GetKeyID() {
+			log.Println("Fixing userInfo", uis[i].KeyID, "to", uis[i].GetKeyID())
 			uis[i].KeyID = uis[i].GetKeyID()
 			pi.DB.Save(&uis[i])
 		}

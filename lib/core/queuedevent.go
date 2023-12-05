@@ -49,9 +49,16 @@ func GetQueuedEvents(pi *PrivateInfoS) (evts []QueuedEvent) {
 	return evts
 }
 
-func i2pPost(uri string, body []byte) ([]byte, error) {
+func i2pHttpTransport() *http.Transport {
 	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 60}
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+}
+
+func i2pPost(uri string, body []byte) ([]byte, error) {
+	httpClient := &http.Client{Transport: i2pHttpTransport(), Timeout: time.Second * 60}
 	// log.Println("Body:" + string(body))
 	req, err := http.NewRequest("POST", uri, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/octet-stream")
@@ -85,8 +92,7 @@ func i2pPost(uri string, body []byte) ([]byte, error) {
 }
 
 func i2pGet(uri string) ([]byte, error) {
-	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
-	httpClient := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}, Timeout: time.Second * 8}
+	httpClient := &http.Client{Transport: i2pHttpTransport(), Timeout: time.Second * 8}
 	// log.Println("Body:" + string(body))
 	req, err := http.NewRequest("GET", uri, nil)
 	req.Header.Set("Content-Type", "application/octet-stream")
