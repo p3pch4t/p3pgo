@@ -49,8 +49,10 @@ func GetQueuedEvents(pi *PrivateInfoS) (evts []QueuedEvent) {
 	return evts
 }
 
+var I2P_HTTP_PROXY = "http://127.0.0.1:4444"
+
 func i2pHttpTransport() *http.Transport {
-	proxyUrl, err := url.Parse("http://127.0.0.1:4444")
+	proxyUrl, err := url.Parse(I2P_HTTP_PROXY)
 	if err != nil {
 		log.Fatalln(err)
 	}

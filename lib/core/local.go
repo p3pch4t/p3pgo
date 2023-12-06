@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,8 @@ var r *chi.Mux
 
 var IsLocalServerRunning = false
 
+var LOCAL_SERVER_PORT = 3893
+
 func StartLocalServer() {
 	if IsLocalServerRunning {
 		return
@@ -32,8 +35,9 @@ func StartLocalServer() {
 	r.Get("/*", getHandleGet())
 	r.Post("/*", getHandlePost())
 	go func() {
-		log.Println("starting on :3893")
-		err := http.ListenAndServe(":3893", r)
+		localServerPort := strconv.Itoa(LOCAL_SERVER_PORT)
+		log.Println("starting on :" + localServerPort)
+		err := http.ListenAndServe(":"+localServerPort, r)
 		if err != nil {
 			log.Fatalln(err)
 		}
