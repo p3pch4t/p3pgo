@@ -126,8 +126,8 @@ func (evt *Event) tryProcessIntroduceRequest(pi *PrivateInfoS) {
 		log.Println("WARN: Unable to armor public key, returning.", err)
 		return
 	}
-	var ui UserInfo
-	pi.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
+	var ui *UserInfo
+	pi.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(ui)
 	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
 	if err != nil {
 		log.Println("WARN: Unable to publickey.GetPublicKey()")
@@ -200,6 +200,6 @@ func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
 		return
 	}
 	for i := range pi.FileStoreElementCallback {
-		pi.FileStoreElementCallback[i](pi, ui, evt, &fse)
+		pi.FileStoreElementCallback[i](pi, ui, &fse, false)
 	}
 }

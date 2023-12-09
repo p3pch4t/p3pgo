@@ -25,8 +25,9 @@ func GetMD5Hash(text string) string {
 	hasher.Write([]byte(text))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
+
 func OpenPrivateInfo(newStorePath string, accountName string, endpointPath string) *PrivateInfoS {
-	storePath = path.Join(newStorePath, GetMD5Hash(accountName))
+	storePath = path.Join(newStorePath, GetMD5Hash(endpointPath))
 	_ = os.MkdirAll(storePath, 0750)
 	logPath = path.Join(storePath, "log.txt")
 	logFile, err := os.Create(logPath)
@@ -58,13 +59,13 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 }
 
 func ensureProperUserInfo(pi *PrivateInfoS) {
-	var uis []UserInfo
+	var uis []*UserInfo
 	pi.DB.Find(&uis)
 	for i := range uis {
 		if uis[i].KeyID != uis[i].GetKeyID() {
 			log.Println("Fixing userInfo", uis[i].KeyID, "to", uis[i].GetKeyID())
 			uis[i].KeyID = uis[i].GetKeyID()
-			pi.DB.Save(&uis[i])
+			pi.DB.Save(uis[i])
 		}
 	}
 }

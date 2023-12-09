@@ -21,9 +21,9 @@ type PrivateInfoS struct {
 	Endpoint    Endpoint
 	DB          *gorm.DB `gorm:"-"`
 	// Callbacks
-	MessageCallback          []func(pi *PrivateInfoS, ui UserInfo, evt *Event, msg *Message)          `gorm:"-"`
-	FileStoreElementCallback []func(pi *PrivateInfoS, ui UserInfo, evt *Event, fse *FileStoreElement) `gorm:"-"`
-	IntroduceCallback        []func(pi *PrivateInfoS, ui UserInfo, evt *Event)                        `gorm:"-"`
+	MessageCallback          []func(pi *PrivateInfoS, ui *UserInfo, evt *Event, msg *Message)              `gorm:"-"`
+	FileStoreElementCallback []func(pi *PrivateInfoS, ui *UserInfo, fse *FileStoreElement, completed bool) `gorm:"-"`
+	IntroduceCallback        []func(pi *PrivateInfoS, ui *UserInfo, evt *Event)                            `gorm:"-"`
 }
 
 func (pi *PrivateInfoS) IsAccountReady() bool {
@@ -119,7 +119,7 @@ func (pi *PrivateInfoS) findSignFingerprint(ciphertext *crypto.PGPMessage) strin
 	if err != nil {
 		log.Fatalln(err)
 	}
-	var uis []UserInfo
+	var uis []*UserInfo
 	pi.DB.Find(&uis)
 	for i := range uis {
 		c, err := crypto.NewKeyRing(nil)
@@ -151,7 +151,7 @@ func (pi *PrivateInfoS) getKeyRing() *crypto.KeyRing {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	var uis []UserInfo
+	var uis []*UserInfo
 	pi.DB.Find(&uis)
 	for i := range uis {
 		pk, err := crypto.NewKeyFromArmored(uis[i].Publickey)

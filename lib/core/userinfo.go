@@ -21,6 +21,21 @@ type UserInfo struct {
 	Endpoint    Endpoint `json:"endpoint"`
 }
 
+func (pi *PrivateInfoS) PurgeUser(ui *UserInfo) {
+	log.Println("DB.AutoMigrate.UserInfo", pi.DB.AutoMigrate(&UserInfo{}))
+	log.Println("DB.AutoMigrate.QueuedEvent", pi.DB.AutoMigrate(&QueuedEvent{}))
+	log.Println("DB.AutoMigrate.Message", pi.DB.AutoMigrate(&Message{}))
+	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
+	// Delete userinfo messages
+	pi.DB.Delete(&Message{}, "key_id = ?", ui.KeyID)
+	// Delete userinfo queued events
+	pi.DB.Delete(&QueuedEvent{}, "endpoint = ?", ui.Endpoint)
+	// Delete userinfo file store elements
+	pi.DB.Delete(&FileStoreElement{}, "internal_key_id = ?", ui.KeyID)
+	// Delete userinfo from db
+	pi.DB.Delete(&UserInfo{})
+}
+
 func StringToKeyID(str string) string {
 	keyid := strings.ToLower(str)
 	if len(keyid) > 16 {
@@ -53,26 +68,37 @@ func (ui *UserInfo) SendIntroduceEvent(pi *PrivateInfoS) {
 			},
 		},
 	}
-	QueueEvent(pi, internalEvent, *ui)
+	QueueEvent(pi, internalEvent, ui)
 }
 
-func (pi *PrivateInfoS) GetUserInfoByID(id uint) (UserInfo, error) {
+func (pi *PrivateInfoS) GetUserInfoByID(id uint) (*UserInfo, error) {
 	var ui UserInfo
 	pi.DB.Find(&ui, "id = ?", id)
 	if id == 0 || ui.ID != id {
-		return UserInfo{ID: id}, errors.New("user with given id couldn't be found")
+		return &UserInfo{ID: id}, errors.New("user with given id couldn't be found")
 	}
-	return ui, nil
+	return &ui, nil
 }
 
-func (pi *PrivateInfoS) GetUserInfoByKeyID(keyid string) (UserInfo, error) {
+func (pi *PrivateInfoS) GetUserInfoByKeyID(keyid string) (*UserInfo, error) {
 	var ui UserInfo
 	keyid = StringToKeyID(keyid)
 	pi.DB.Find(&ui, "key_id = ?", keyid)
 	if keyid == "" || ui.KeyID != keyid {
-		return UserInfo{KeyID: keyid}, errors.New("user with given key_id couldn't be found")
+		return &UserInfo{KeyID: keyid}, errors.New("user with given key_id couldn't be found")
 	}
-	return ui, nil
+	return &ui, nil
+}
+
+func (pi *PrivateInfoS) GetAllUserInfo() (uis []*UserInfo) {
+	pi.DB.Find(&uis)
+	for i := range uis {
+		if uis[i].Fingerprint == "" && uis[i].Publickey == "" {
+			pi.DB.Delete(&uis[i])
+			continue
+		}
+	}
+	return uis
 }
 
 func (pi *PrivateInfoS) GetAllUserIDs() (UserInfoIDs []uint) {
@@ -88,18 +114,18 @@ func (pi *PrivateInfoS) GetAllUserIDs() (UserInfoIDs []uint) {
 	return UserInfoIDs
 }
 
-func (pi *PrivateInfoS) CreateUserByPublicKey(publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (UserInfo, error) {
+func (pi *PrivateInfoS) CreateUserByPublicKey(publicKeyArmored string, username string, endpoint Endpoint, shouldIntroduce bool) (*UserInfo, error) {
 	publicKey, err := crypto.NewKeyFromArmored(publicKeyArmored)
 	if err != nil {
 		log.Println("WARN: Unable to armor public key, returning.")
-		return UserInfo{}, errors.New("WARN: Unable to armor public key, returning")
+		return &UserInfo{}, errors.New("WARN: Unable to armor public key, returning")
 	}
 	var ui UserInfo
 	pi.DB.Where("fingerprint = ?", publicKey.GetFingerprint()).First(&ui)
 	b, err := publicKey.GetArmoredPublicKeyWithCustomHeaders("p3pgo", "")
 	if err != nil {
 		log.Println("WARN: Unable to publickey.GetPublicKey()")
-		return UserInfo{}, errors.New("WARN: Unable to publickey.GetPublicKey()")
+		return &UserInfo{}, errors.New("WARN: Unable to publickey.GetPublicKey()")
 	}
 	ui.Publickey = b
 	ui.Fingerprint = strings.ToLower(publicKey.GetFingerprint())
@@ -116,7 +142,7 @@ func (pi *PrivateInfoS) CreateUserByPublicKey(publicKeyArmored string, username 
 	if shouldIntroduce {
 		ui.SendIntroduceEvent(pi)
 	}
-	return ui, nil
+	return &ui, nil
 }
 
 type DiscoveredUserInfo struct {

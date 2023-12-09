@@ -22,9 +22,18 @@ func (e *Endpoint) GetHost() string {
 	}
 	// ${urip.host}:${urip.port}${urip.path}${urip.query}
 	host := "http://" + uri.Host + uri.Path + uri.RawQuery
-	log.Println("GetHost:", host)
 	return host
 }
+
+func (e *Endpoint) GetUriHostDomain() string {
+	uri, err := url.Parse(string(*e))
+	if err != nil {
+		log.Println("Unbale to Endpoint.getHost:", err)
+		return ""
+	}
+	return uri.Host
+}
+
 func (e *Endpoint) GetExtra() string {
 	uri, err := url.Parse(string(*e))
 	if err != nil {

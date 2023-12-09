@@ -330,6 +330,11 @@ func (fse *FileStoreElement) downloadSafe(pi *PrivateInfoS) {
 OuterLoop:
 	for {
 		tries++
+		if tries > 15 {
+			pi.DB.Delete(&fse)
+			mut.Unlock()
+			return
+		}
 		req, _ := grab.NewRequest(fse.LocalPath(), fse.ExternalHttpPath)
 		log.Printf("Downloading %d, %v...\n", tries, req.URL())
 		resp := client.Do(req)
@@ -352,7 +357,15 @@ OuterLoop:
 				fse.IsDownloading = false
 				fse.ExternalHttpPath = ""
 				pi.DB.Save(fse)
+				ui, err := pi.GetUserInfoByKeyID(fse.InternalKeyID)
+				if err != nil {
+					log.Println(err)
+					break OuterLoop
+				}
 				fse.UpdateContent(pi, false)
+				for i := range pi.FileStoreElementCallback {
+					pi.FileStoreElementCallback[i](pi, ui, fse, true)
+				}
 				break OuterLoop
 			}
 		}

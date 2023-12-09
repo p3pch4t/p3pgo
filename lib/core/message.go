@@ -20,19 +20,19 @@ func (pi *PrivateInfoS) GetMessageByID(msgID int) Message {
 	return msg
 }
 
-func (pi *PrivateInfoS) GetMessagesByUserInfo(ui UserInfo) []Message {
+func (pi *PrivateInfoS) GetMessagesByUserInfo(ui *UserInfo) []Message {
 	var msgs []Message
 	pi.DB.Where("key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&msgs)
 	return msgs
 }
 
-func (pi *PrivateInfoS) GetFileStoreElementsByUserInfo(ui UserInfo) []FileStoreElement {
+func (pi *PrivateInfoS) GetFileStoreElementsByUserInfo(ui *UserInfo) []FileStoreElement {
 	var fselms []FileStoreElement
 	pi.DB.Where("internal_key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&fselms)
 	return fselms
 }
 
-func (pi *PrivateInfoS) SendMessage(ui UserInfo, messageType MessageType, text string) {
+func (pi *PrivateInfoS) SendMessage(ui *UserInfo, messageType MessageType, text string) {
 	log.Println("SendMessage", ui.GetKeyID(), messageType)
 	pi.DB.Save(&Message{KeyID: ui.GetKeyID(), Incoming: false, Body: text})
 	evt := Event{

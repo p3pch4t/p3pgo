@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-func QueueEvent(pi *PrivateInfoS, evt Event, ui UserInfo) {
+func QueueEvent(pi *PrivateInfoS, evt Event, ui *UserInfo) {
 	if evt.Uuid == "" {
 		evt.RandomizeUuid()
 	}
