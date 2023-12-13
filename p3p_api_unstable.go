@@ -13,6 +13,8 @@ import (
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 )
 
+func main() {}
+
 //export Print
 func Print(s *C.char) {
 	log.Printf("p3p.Print(): %s", C.GoString(s))
@@ -27,8 +29,8 @@ func HealthCheck() bool {
 var a []*core.PrivateInfoS
 
 //export OpenPrivateInfo
-func OpenPrivateInfo(storePath *C.char, accountName *C.char, endpointPath *C.char) int {
-	pi := core.OpenPrivateInfo(C.GoString(storePath), C.GoString(accountName), C.GoString(endpointPath))
+func OpenPrivateInfo(storePath *C.char, accountName *C.char, endpointPath *C.char, isMini bool) int {
+	pi := core.OpenPrivateInfo(C.GoString(storePath), C.GoString(accountName), C.GoString(endpointPath), isMini)
 	a = append(a, pi)
 	return len(a) - 1
 }
@@ -346,4 +348,65 @@ func GetUserInfoFileStoreElements(piId int, UserInfoID int) *C.char {
 		log.Fatalln(err)
 	}
 	return C.CString(string(b))
+}
+
+// --------- QueuedEvents
+
+//export GetQueuedEventIDs
+func GetQueuedEventIDs(piId int) *C.char {
+	qevts := a[piId].GetAllQueuedEvents()
+	var qevtsId []uint
+	for i := range qevts {
+		qevtsId = append(qevtsId, qevts[i].ID)
+	}
+	b, err := json.Marshal(qevtsId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(string(b))
+}
+
+//export GetQueuedEventCreatedAt
+func GetQueuedEventCreatedAt(piId int, queuedEventId int) int64 {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.CreatedAt.UnixMicro()
+}
+
+//export GetQueuedEventDeletedAt
+func GetQueuedEventDeletedAt(piId int, queuedEventId int) int64 {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	if qevt.DeletedAt.Valid {
+		return qevt.DeletedAt.Time.UnixMicro()
+	}
+	return 0
+}
+
+//export GetQueuedEventUpdatedAt
+func GetQueuedEventUpdatedAt(piId int, queuedEventId int) int64 {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.UpdatedAt.UnixMicro()
+}
+
+//export GetQueuedEventLastRelayed
+func GetQueuedEventLastRelayed(piId int, queuedEventId int) int64 {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.LastRelayed.UnixMicro()
+}
+
+//export GetQueuedEventBody
+func GetQueuedEventBody(piId int, queuedEventId int) []byte {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.Body
+}
+
+//export GetQueuedEventEndpoint
+func GetQueuedEventEndpoint(piId int, queuedEventId int) *C.char {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return C.CString(string(qevt.Endpoint))
+}
+
+//export GetQueuedEventRelayTries
+func GetQueuedEventRelayTries(piId int, queuedEventId int) int {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.RelayTries
 }

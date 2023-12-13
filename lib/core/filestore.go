@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,8 +75,14 @@ func (pi *PrivateInfoS) CreateFileStoreElement(uiKeyId string, uuid string, path
 	}
 
 	if httpPath != "" {
-		fi.ExternalHttpPath = ui.Endpoint.GetHost() + "/" + httpPath
-		_ = fi.GetFile().Truncate(0) // We truncate it just in case
+		if strings.HasPrefix(httpPath, "http://") || strings.HasPrefix(httpPath, "https://") {
+			fi.ExternalHttpPath = httpPath
+		} else {
+			fi.ExternalHttpPath = ui.Endpoint.GetHost() + "/" + httpPath
+		}
+		if !pi.IsMini {
+			_ = fi.GetFile().Truncate(0) // We truncate it just in case
+		}
 	}
 
 	if localFilePath != "" {
@@ -247,7 +254,7 @@ func (fse *FileStoreElement) GetFile() *os.File {
 	return f
 }
 
-func (pi *PrivateInfoS) fileStoreElementQueueRunner() {
+func (pi *PrivateInfoS) FileStoreElementQueueRunner() {
 	for {
 		var felms []FileStoreElement
 		pi.DB.Find(&felms)
@@ -304,6 +311,10 @@ func (fse *FileStoreElement) getMutex() *sync.Mutex {
 }
 
 func (fse *FileStoreElement) downloadSafe(pi *PrivateInfoS) {
+	if pi.IsMini {
+		log.Println("WARN: downloadSafe() called while isMini == true")
+		return
+	}
 	if fse.ExternalHttpPath == "" {
 		return
 	}

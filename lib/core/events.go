@@ -82,6 +82,9 @@ type EventDataFile struct {
 }
 
 func (evt *Event) TryProcess(pi *PrivateInfoS) {
+	for i := range pi.EventCallback {
+		pi.EventCallback[i](pi, evt)
+	}
 	switch evt.EventType {
 	case EventTypeIntroduce:
 		evt.tryProcessIntroduce(pi)
@@ -167,7 +170,12 @@ func (evt *Event) tryProcessMessage(pi *PrivateInfoS) {
 		Body:     string(evt.Data.EventDataMessage.Text),
 		Incoming: true,
 	}
-	pi.DB.Save(msg)
+	if pi.IsMini {
+		log.Println("Not saving Message{}, because IsMini == true. Call `pi.DB.Save(msg)' on your own if you wish.")
+	} else {
+		pi.DB.Save(msg)
+
+	}
 	ui, err := pi.GetUserInfoByKeyID(evt.InternalKeyID)
 	if err != nil {
 		log.Println(err)

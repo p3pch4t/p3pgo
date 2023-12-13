@@ -26,7 +26,7 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func OpenPrivateInfo(newStorePath string, accountName string, endpointPath string) *PrivateInfoS {
+func OpenPrivateInfo(newStorePath string, accountName string, endpointPath string, isMini bool) *PrivateInfoS {
 	storePath = path.Join(newStorePath, GetMD5Hash(endpointPath))
 	_ = os.MkdirAll(storePath, 0750)
 	logPath = path.Join(storePath, "log.txt")
@@ -49,16 +49,24 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
 	log.Println("DB.AutoMigrate.PrivateInfoS", pi.DB.AutoMigrate(&PrivateInfoS{}))
 	pi.Refresh()
-	go queueRunner(&pi)
-	go pi.fileStoreElementQueueRunner()
-	ensureProperUserInfo(&pi)
+	pi.IsMini = isMini
+	if isMini {
+		log.Println(`NOTE: isMini = true`)
+		log.Println(`EventQueueRunner won't be run and you are on your own with relaying events'`)
+		log.Println("FileStoreElementQueueRunner won't be run and you are on your own with broadcasting changed files.")
+		log.Println("FileStoreElementDownloadLoop won't be run and you are on your own with downloading files.")
+	} else {
+		go pi.EventQueueRunner()
+		go pi.FileStoreElementQueueRunner()
+		go pi.FileStoreElementDownloadLoop()
+	}
+	pi.ensureProperUserInfo()
 	StartLocalServer()
 	pi.InitReachableLocal(endpointPath)
-	go pi.FileStoreElementDownloadLoop()
 	return &pi
 }
 
-func ensureProperUserInfo(pi *PrivateInfoS) {
+func (pi *PrivateInfoS) ensureProperUserInfo() {
 	var uis []*UserInfo
 	pi.DB.Find(&uis)
 	for i := range uis {

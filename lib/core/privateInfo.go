@@ -19,11 +19,13 @@ type PrivateInfoS struct {
 	AccountName string
 	Passphrase  []byte
 	Endpoint    Endpoint
+	IsMini      bool
 	DB          *gorm.DB `gorm:"-"`
 	// Callbacks
 	MessageCallback          []func(pi *PrivateInfoS, ui *UserInfo, evt *Event, msg *Message)              `gorm:"-"`
 	FileStoreElementCallback []func(pi *PrivateInfoS, ui *UserInfo, fse *FileStoreElement, completed bool) `gorm:"-"`
 	IntroduceCallback        []func(pi *PrivateInfoS, ui *UserInfo, evt *Event)                            `gorm:"-"`
+	EventCallback            []func(pi *PrivateInfoS, evt *Event)                                          `gorm:"-"`
 }
 
 func (pi *PrivateInfoS) IsAccountReady() bool {

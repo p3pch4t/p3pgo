@@ -61,3 +61,14 @@ func QueueEvent(pi *PrivateInfoS, evt Event, ui *UserInfo) {
 		Endpoint: ui.Endpoint,
 	})
 }
+
+func (pi *PrivateInfoS) GetAllQueuedEvents() (qevts []*QueuedEvent) {
+	pi.DB.Find(&qevts)
+	return qevts
+}
+
+func (pi *PrivateInfoS) GetQueuedEvent(queuedEventID int) (qevt *QueuedEvent) {
+	qevt = &QueuedEvent{}
+	pi.DB.First(qevt, "id = ?", queuedEventID)
+	return qevt
+}

@@ -23,28 +23,33 @@ import (
 // This way we don't rely on anything.
 type QueuedEvent struct {
 	gorm.Model
-	ID       uint
-	Body     []byte
-	Endpoint Endpoint
+	RelayTries  int
+	LastRelayed time.Time
+	Body        []byte
+	Endpoint    Endpoint
 }
 
-func (evt *QueuedEvent) Relay(pi *PrivateInfoS) {
+func (evt *QueuedEvent) Relay(pi *PrivateInfoS) error {
+	evt.LastRelayed = time.Now()
+	evt.RelayTries++
+	pi.DB.Save(evt)
 	host := evt.Endpoint.GetHost()
 	if host == "" || host == "http://:" {
 		log.Println("Removed event from queue:", evt.ID, "reason: host is not found")
 		pi.DB.Delete(evt)
-		return
+		return errors.New("host is empty - removed queued event")
 	}
 	_, err := i2pPost(host, evt.Body)
 	if err != nil {
 		log.Println(err)
 		// DB.Delete(evt)
-		return
+		return err
 	}
 	pi.DB.Delete(evt)
+	return nil
 }
 
-func GetQueuedEvents(pi *PrivateInfoS) (evts []QueuedEvent) {
+func GetQueuedEvents(pi *PrivateInfoS) (evts []*QueuedEvent) {
 	pi.DB.Order("RANDOM()").Limit(50).Find(&evts)
 	return evts
 }
@@ -94,7 +99,7 @@ func i2pPost(uri string, body []byte) ([]byte, error) {
 }
 
 func i2pGet(uri string) ([]byte, error) {
-	httpClient := &http.Client{Transport: i2pHttpTransport(), Timeout: time.Second * 8}
+	httpClient := &http.Client{Transport: i2pHttpTransport(), Timeout: time.Second * 14}
 	// log.Println("Body:" + string(body))
 	req, err := http.NewRequest("GET", uri, nil)
 	req.Header.Set("Content-Type", "application/octet-stream")
@@ -123,23 +128,32 @@ func i2pGet(uri string) ([]byte, error) {
 	return b, nil
 }
 
-func queueRunner(pi *PrivateInfoS) {
+var queueTimeout = make(map[string]int)
+
+func (pi *PrivateInfoS) EventQueueRunner() {
 	for {
-		var emptyList = []Endpoint{}
+		var emptyList []Endpoint
+	OuterLoop:
 		for _, evt := range GetQueuedEvents(pi) {
-			found := false
 			for i := range emptyList {
 				if evt.Endpoint == emptyList[i] {
-					found = true
+					break OuterLoop
 				}
 			}
-			if found {
-				break
+			_, ok := queueTimeout[string(evt.Endpoint)]
+			if !ok {
+				queueTimeout[string(evt.Endpoint)] = 0
 			}
-			log.Println("processing event:", evt.ID)
 			emptyList = append(emptyList, evt.Endpoint)
-			evt.Relay(pi)
+			if queueTimeout[string(evt.Endpoint)] > 0 {
+				queueTimeout[string(evt.Endpoint)]--
+				continue
+			}
+
+			queueTimeout[string(evt.Endpoint)] = 5
+			log.Println("processing event:", evt.ID)
+			go evt.Relay(pi)
 		}
-		time.Sleep(time.Second * 4)
+		time.Sleep(time.Second * 1)
 	}
 }
