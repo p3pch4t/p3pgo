@@ -1,9 +1,9 @@
 name: linux build
 run-name: linux build
 on:
-  push:
-    tags:
-      - '*'
+  pull_request:
+    types: [opened, reopened, synchronize]
+
 jobs:
   linux_build:
     runs-on: amd64_debian_bookworm_cross
@@ -16,17 +16,3 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           make c_api_linux
-      - name: generate checksums and xz -e
-        run: |
-          cd ${{ github.workspace }}
-          cd build
-          for i in *.so;
-          do
-            sha256sum $i > $i.sha256
-            xz -e $i
-            sha256sum $i.xz > $i.xz.sha256
-          done
-          for i in *.h;
-          do
-            xz -e $i
-          done
