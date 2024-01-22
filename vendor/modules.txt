@@ -159,3 +159,5 @@ modernc.org/sqlite/lib
 # moul.io/http2curl v1.0.0
 ## explicit
 moul.io/http2curl
+# moul.io/http2curl/v2 v2.3.0
+## explicit; go 1.13
