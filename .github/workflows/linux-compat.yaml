@@ -1,12 +1,12 @@
-name: android build
-run-name: android build
+name: linux build
+run-name: linux build
 on:
   push:
     tags:
       - '*'
 jobs:
-  android_build:
-    runs-on: androidndk-r26b
+  linux_build:
+    runs-on: amd64_debian_bookworm_cross
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v3
@@ -15,8 +15,7 @@ jobs:
       - name: make c_api_android
         run: |
           cd ${{ github.workspace }}
-          # temp path fix
-          NDK_HOME=/opt/android/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin make c_api_android
+          make c_api_linux
       - name: generate checksums and xz -e
         run: |
           cd ${{ github.workspace }}

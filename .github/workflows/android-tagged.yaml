@@ -1,0 +1,43 @@
+name: android build
+run-name: android build
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  android_build:
+    runs-on: androidndk-r26b
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: make c_api_android
+        run: |
+          cd ${{ github.workspace }}
+          NDK_HOME=/opt/android/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin make c_api_android
+      - name: generate checksums and xz -e
+        run: |
+          cd ${{ github.workspace }}
+          cd build
+          for i in *.so;
+          do
+            sha256sum $i > $i.sha256
+            xz -e $i
+            sha256sum $i.xz > $i.xz.sha256
+          done
+          for i in *.h;
+          do
+            xz -e $i
+          done
+      - name: Create release
+        uses: akkuman/gitea-release-action@v1
+        with:
+          body: |
+            This is a **preview** release to be used by testers.
+            It was build from **${{ gitea.ref }}** commit `${{ gitea.sha }}`
+
+            ### Release info
+            ${{ github.event.head_commit.message }}
+          files: |-
+            ${{ gitea.workspace }}/build/*.xz
