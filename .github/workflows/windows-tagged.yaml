@@ -1,8 +1,9 @@
 name: windows build
 run-name: windows build
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
+  push:
+    tags:
+      - '*'
 
 jobs:
   windows_build:
