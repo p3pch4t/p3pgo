@@ -26,6 +26,7 @@ jobs:
           function msys() { C:\\msys64\\usr\\bin\\bash.exe @('-c') + @Args; }
           function msysl() { C:\\msys64\\usr\\bin\\bash.exe @('-lc') + @Args; }
           msys 'PATH=/${{ matrix.MINGW }}/bin:/usr/bin GOROOT=/${{ matrix.MINGW }}/lib/go GOPATH=/${{ matrix.MINGW }} make c_api'
+          cd build
           msys '/usr/bin/mv api_host.so win64_libp3pgo.dll'
           msys '/usr/bin/mv api_host.h win64_libp3pgo.h'
           msys '/usr/bin/sha256sum win64_libp3pgo.dll > win64_libp3pgo.dll.sha256'
