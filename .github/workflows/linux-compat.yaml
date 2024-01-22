@@ -30,14 +30,3 @@ jobs:
           do
             xz -e $i
           done
-      - name: Create release
-        uses: akkuman/gitea-release-action@v1
-        with:
-          body: |
-            This is a **preview** release to be used by testers.
-            It was build from **${{ gitea.ref }}** commit `${{ gitea.sha }}`
-
-            ### Release info
-            ${{ github.event.head_commit.message }}
-          files: |-
-            ${{ gitea.workspace }}/build/*.xz
