@@ -1,6 +1,6 @@
 module git.mrcyjanek.net/p3pch4t/p3pgo
 
-go 1.21.3
+go 1.21.6
 
 require (
 	github.com/ProtonMail/gopenpgp/v2 v2.7.3
