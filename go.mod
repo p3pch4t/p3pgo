@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.5.0
 	gorm.io/gorm v1.25.5
 	moul.io/http2curl v1.0.0
+	moul.io/http2curl/v2 v2.3.0
 )
 
 require (
