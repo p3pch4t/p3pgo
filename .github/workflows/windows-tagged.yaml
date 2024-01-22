@@ -1,0 +1,45 @@
+name: windows build
+run-name: windows build
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  windows_build:
+    strategy:
+      matrix:
+        include:
+          # - MINGW: mingw32
+          #   ARCH: i686
+          - MINGW: mingw64
+            ARCH: x86_64
+    runs-on: amd64_debian_bookworm_cross
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: make c_api && xz -e
+        run: |
+          cd ${{ github.workspace }}
+          cd ${{ gitea.workspace }}
+          function msys() { C:\\msys64\\usr\\bin\\bash.exe @('-c') + @Args; }
+          function msysl() { C:\\msys64\\usr\\bin\\bash.exe @('-lc') + @Args; }
+          msys 'PATH=/${{ matrix.MINGW }}/bin:/usr/bin GOROOT=/${{ matrix.MINGW }}/lib/go GOPATH=/${{ matrix.MINGW }} make c_api'
+          msys '/usr/bin/mv api_host.so win64_libp3pgo.dll'
+          msys '/usr/bin/mv api_host.h win64_libp3pgo.h'
+          msys '/usr/bin/sha256sum win64_libp3pgo.dll > win64_libp3pgo.dll.sha256'
+          msys '/usr/bin/xz -e win64_libp3pgo.dll'
+          msys '/usr/bin/xz -e win64_libp3pgo.h'
+          msys '/usr/bin/sha256sum win64_libp3pgo.dll.xz > win64_libp3pgo.dll.xz.sha256'
+      - name: Create release
+        uses: akkuman/gitea-release-action@v1
+        with:
+          body: |
+            This is a **preview** release to be used by testers.
+            It was build from **${{ gitea.ref }}** commit `${{ gitea.sha }}`
+
+            ### Release info
+            ${{ github.event.head_commit.message }}
+          files: |-
+            ${{ gitea.workspace }}/build/*.xz
