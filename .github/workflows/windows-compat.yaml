@@ -13,7 +13,7 @@ jobs:
           #   ARCH: i686
           - MINGW: mingw64
             ARCH: x86_64
-    runs-on: amd64_debian_bookworm_cross
+    runs-on: windows-msys2-build-full
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v3
