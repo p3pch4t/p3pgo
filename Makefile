@@ -7,9 +7,8 @@ ANDROID_AMD64 := "x86_64-linux-android21-clang"
 all: clean c_api_android c_api_linux
 
 c_api:
-	rm -rf build/api.so || true
-	mkdir -p build || true
-	go build -v -buildmode=c-shared -o build/api_host.so .
+	-rm -rf build/api_host.so
+	CGO_ENABLED=1 go build -v -buildmode=c-shared -o build/api_host.so .
 
 c_api_android:
 	CGO_ENABLED=1 CC=${NDK_HOME}/${ANDROID_ARM} CXX=${NDK_HOME}/${ANDROID_ARM}++ GOOS=android GOARCH=arm go build -v -buildmode=c-shared -o build/api_android_armeabi-v7a.so .
@@ -21,10 +20,9 @@ c_api_linux:
 	CGO_ENABLED=1 CC=i686-linux-gnu-gcc CXX=i386-linux-gnu-g++ GOOS=linux GOARCH=386 go build -v -buildmode=c-shared -o build/api_linux_i386.so .
 	CGO_ENABLED=1 CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++ GOOS=linux GOARCH=amd64 go build -v -buildmode=c-shared -o build/api_linux_amd64.so .
 	CGO_ENABLED=1 CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ GOOS=linux GOARCH=arm go build -v -buildmode=c-shared -o build/api_linux_armhf.so .
-	CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-g++ GOOS=linux GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_linux_aarch64.so .
-
+	CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ GOOS=linux GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_linux_aarch64.so .
 
 clean:
-	rm -rf build
+	-rm -rf build
 
 .PHONY: c_api clean c_api_android c_api_linux

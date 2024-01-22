@@ -44,6 +44,10 @@ func StringToKeyID(str string) string {
 	return keyid
 }
 
+func (ui *UserInfo) GetEndpointStats(pi *PrivateInfoS) *EndpointStats {
+	return pi.getEndpointStats(ui.Endpoint)
+}
+
 func (ui *UserInfo) GetKeyID() string {
 	publicKey, err := crypto.NewKeyFromArmored(ui.Publickey)
 	if err != nil {

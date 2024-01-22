@@ -8,8 +8,9 @@ import (
 	"os"
 	"path"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	// "gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 )
 
 // var DB *gorm.DB
@@ -39,6 +40,7 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("OpenSqlite(): logger setup!")
 	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
 	var pi = PrivateInfoS{AccountName: accountName}
+
 	pi.DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
 		log.Fatalln(err)
@@ -48,6 +50,8 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("DB.AutoMigrate.Message", pi.DB.AutoMigrate(&Message{}))
 	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
 	log.Println("DB.AutoMigrate.PrivateInfoS", pi.DB.AutoMigrate(&PrivateInfoS{}))
+	log.Println("DB.AutoMigrate.EndpointStats", pi.DB.AutoMigrate(&EndpointStats{}))
+
 	pi.Refresh()
 	pi.IsMini = isMini
 	if isMini {

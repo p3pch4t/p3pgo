@@ -350,6 +350,15 @@ func GetUserInfoFileStoreElements(piId int, UserInfoID int) *C.char {
 	return C.CString(string(b))
 }
 
+//export GetUserInfoEndpointStats
+func GetUserInfoEndpointStats(piId int, uid int64) uint {
+	ui, err := a[piId].GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return ui.GetEndpointStats(a[piId]).ID
+}
+
 // --------- QueuedEvents
 
 //export GetQueuedEventIDs
@@ -409,4 +418,61 @@ func GetQueuedEventEndpoint(piId int, queuedEventId int) *C.char {
 func GetQueuedEventRelayTries(piId int, queuedEventId int) int {
 	qevt := a[piId].GetQueuedEvent(queuedEventId)
 	return qevt.RelayTries
+}
+
+//export GetQueuedEventEndpointStats
+func GetQueuedEventEndpointStats(piId int, queuedEventId int) uint {
+	qevt := a[piId].GetQueuedEvent(queuedEventId)
+	return qevt.GetEndpointStats(a[piId]).ID
+}
+
+//export GetEndpointStatsCreatedAt
+func GetEndpointStatsCreatedAt(piId int, endpointStatsId int) int64 {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.CreatedAt.UnixMicro()
+}
+
+//export GetEndpointStatsUpdatedAt
+func GetEndpointStatsUpdatedAt(piId int, endpointStatsId int) int64 {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.UpdatedAt.UnixMicro()
+}
+
+//export GetEndpointStatsDeletedAt
+func GetEndpointStatsDeletedAt(piId int, endpointStatsId int) int64 {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	if estats.DeletedAt.Valid {
+		return estats.DeletedAt.Time.UnixMicro()
+	}
+	return 0
+}
+
+//export GetEndpointStatsEndpoint
+func GetEndpointStatsEndpoint(piId int, endpointStatsId int) *C.char {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return C.CString(estats.Endpoint)
+}
+
+//export GetEndpointStatsLastContactOut
+func GetEndpointStatsLastContactOut(piId int, endpointStatsId int) int64 {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.LastContactOut.UnixMicro()
+}
+
+//export GetEndpointStatsLastContactIn
+func GetEndpointStatsLastContactIn(piId int, endpointStatsId int) int64 {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.LastContactIn.UnixMicro()
+}
+
+//export GetEndpointStatsFailInRow
+func GetEndpointStatsFailInRow(piId int, endpointStatsId int) int {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.FailInRow
+}
+
+//export GetEndpointStatsCurrentDelay
+func GetEndpointStatsCurrentDelay(piId int, endpointStatsId int) int {
+	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+	return estats.CurrentDelay
 }
