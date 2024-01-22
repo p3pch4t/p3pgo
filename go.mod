@@ -3,7 +3,7 @@ module git.mrcyjanek.net/p3pch4t/p3pgo
 go 1.21.6
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.7.3
+	github.com/ProtonMail/gopenpgp/v2 v2.7.4
 	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/glebarez/sqlite v1.10.0
 	github.com/go-chi/chi/v5 v5.0.11

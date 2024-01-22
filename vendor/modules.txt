@@ -22,7 +22,7 @@ github.com/ProtonMail/go-crypto/openpgp/s2k
 # github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f
 ## explicit; go 1.12
 github.com/ProtonMail/go-mime
-# github.com/ProtonMail/gopenpgp/v2 v2.7.3
+# github.com/ProtonMail/gopenpgp/v2 v2.7.4
 ## explicit; go 1.15
 github.com/ProtonMail/gopenpgp/v2/armor
 github.com/ProtonMail/gopenpgp/v2/constants
