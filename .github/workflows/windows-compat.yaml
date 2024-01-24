@@ -1,6 +1,9 @@
 name: windows build
 run-name: windows build
 on:
+  push:
+    branches:
+      - '!renovate/**'
   pull_request:
     types: [opened, reopened, synchronize]
 
