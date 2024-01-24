@@ -7,7 +7,7 @@ require (
 	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/glebarez/sqlite v1.10.0
 	github.com/go-chi/chi/v5 v5.0.11
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	gorm.io/gorm v1.25.5
 	moul.io/http2curl v1.0.0
 	moul.io/http2curl/v2 v2.3.0
