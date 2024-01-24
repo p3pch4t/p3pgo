@@ -4,7 +4,7 @@ ANDROID_ARM64 := "aarch64-linux-android21-clang"
 ANDROID_386 := "i686-linux-android21-clang"
 ANDROID_AMD64 := "x86_64-linux-android21-clang"
 
-all: clean c_api_android c_api_linux
+all: clean c_api_android c_api_linux c_api_darwin
 
 c_api:
 	-rm -rf build/api_host.so
@@ -23,10 +23,10 @@ c_api_linux:
 	CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ GOOS=linux GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_linux_aarch64.so .
 
 c_api_darwin:
-	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -v -buildmode=c-shared -o build/api_darwin_amd64.dylib .
-	# CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_darwin_arm64.so .
+	CGO_ENABLED=1 CC=clang CXX=clang++ CPPFLAGS="-arch x86_64" GOOS=darwin GOARCH=amd64 go build -v -buildmode=c-shared -o build/api_darwin_amd64.dylib .
+	CGO_ENABLED=1 CC=clang CXX=clang++ CPPFLAGS="-arch arm64" GOOS=darwin GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_darwin_arm64.dylib .
 
 clean:
 	-rm -rf build
 
-.PHONY: c_api clean c_api_android c_api_linux
+.PHONY: c_api clean c_api_android c_api_linux c_api_darwin
