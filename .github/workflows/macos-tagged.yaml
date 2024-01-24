@@ -1,0 +1,43 @@
+name: macos build
+run-name: macos build
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  macos_build:
+    runs-on: macos-base
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: make c_api_darwin
+        run: |
+          cd ${{ github.workspace }}
+          make c_api_darwin
+      - name: generate checksums and xz -e
+        run: |
+          cd ${{ github.workspace }}
+          cd build
+          for i in *.dylib;
+          do
+            sha256sum $i > $i.sha256
+            xz -e $i
+            sha256sum $i.xz > $i.xz.sha256
+          done
+          for i in *.h;
+          do
+            xz -e $i
+          done
+      - name: Create release
+        uses: akkuman/gitea-release-action@v1
+        with:
+          body: |
+            This is a **preview** release to be used by testers.
+            It was build from **${{ gitea.ref }}** commit `${{ gitea.sha }}`
+
+            ### Release info
+            ${{ github.event.head_commit.message }}
+          files: |-
+            ${{ gitea.workspace }}/build/*.xz

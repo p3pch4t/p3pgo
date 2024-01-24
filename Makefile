@@ -22,6 +22,10 @@ c_api_linux:
 	CGO_ENABLED=1 CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ GOOS=linux GOARCH=arm go build -v -buildmode=c-shared -o build/api_linux_armhf.so .
 	CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ GOOS=linux GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_linux_aarch64.so .
 
+c_api_darwin:
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -v -buildmode=c-shared -o build/api_darwin_amd64.dylib .
+	# CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -v -buildmode=c-shared -o build/api_darwin_arm64.so .
+
 clean:
 	-rm -rf build
 
