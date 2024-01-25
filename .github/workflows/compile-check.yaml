@@ -1,0 +1,18 @@
+name: compile check
+run-name: compile check
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  linux_build:
+    runs-on: amd64_debian_bookworm_cross
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: make c_api
+        run: |
+          cd ${{ github.workspace }}
+          make c_api
