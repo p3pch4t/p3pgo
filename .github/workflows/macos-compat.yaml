@@ -1,18 +1,18 @@
-name: android build
-run-name: android build
+name: macos build
+run-name: macos build
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
 jobs:
-  android_build:
-    runs-on: androidndk-r26b
+  macos_build:
+    runs-on: macos-base
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: make c_api_android
+      - name: make c_api_darwin
         run: |
           cd ${{ github.workspace }}
-          NDK_HOME=/opt/android/android-ndk-r26b/toolchains/llvm/prebuilt/linux-x86_64/bin make c_api_android
+          make c_api_darwin

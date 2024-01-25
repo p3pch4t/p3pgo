@@ -1,9 +1,6 @@
 name: linux build
 run-name: linux build
 on:
-  push:
-    branches:
-      - '!renovate/**'
   pull_request:
     types: [opened, reopened, synchronize]
 
