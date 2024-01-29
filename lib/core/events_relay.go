@@ -38,8 +38,12 @@ func (evt *QueuedEvent) Relay(pi *PrivateInfoS) error {
 	evt.LastRelayed = time.Now()
 	evt.RelayTries++
 	pi.DB.Save(evt)
+	es := evt.GetEndpointStats(pi)
+	if !es.ShouldRelayNow(pi) {
+		return errors.New("es.ShouldRelayNow says we shouldn't relay it")
+	}
 	host := evt.Endpoint.GetHost()
-	if host == "" || host == "http://:" {
+	if host == "" || host == "http://:" || host == "http://" {
 		log.Println("Removed event from queue:", evt.ID, "reason: host is not found")
 		pi.DB.Delete(evt)
 		return errors.New("host is empty - removed queued event")
@@ -47,8 +51,10 @@ func (evt *QueuedEvent) Relay(pi *PrivateInfoS) error {
 	_, err := i2pPost(host, evt.Body)
 	if err != nil {
 		// DB.Delete(evt)
+		es.Fail(pi)
 		return err
 	}
+	es.SuccessOut(pi)
 	pi.DB.Delete(evt)
 	return nil
 }
@@ -69,7 +75,7 @@ type EndpointStats struct {
 	gorm.Model
 	Endpoint       string
 	LastContactOut time.Time
-	LastContactIn  time.Time
+	// LastContactIn  time.Time
 	// We need some specific way of defining when to contact a user.
 	// I assume that we want to try frequently for first two days,
 	// and if after 48 hours we hear no reply skip contacting that user.
@@ -117,11 +123,11 @@ func (es *EndpointStats) SuccessOut(pi *PrivateInfoS) {
 	pi.DB.Save(es)
 }
 
-func (es *EndpointStats) SuccessIn(pi *PrivateInfoS) {
-	es.LastContactIn = time.Now()
-	es.FailInRow = 60
-	pi.DB.Save(es)
-}
+//func (es *EndpointStats) SuccessIn(pi *PrivateInfoS) {
+//	es.LastContactIn = time.Now()
+//	es.FailInRow = 60
+//	pi.DB.Save(es)
+//}
 
 func (es *EndpointStats) ShouldRelayNow(pi *PrivateInfoS) bool {
 	if es.FailInRow == 0 {
