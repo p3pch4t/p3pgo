@@ -6,12 +6,16 @@ package main
 import (
 	"C"
 	"encoding/json"
-	"log"
-	"time"
-
 	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"log"
 )
+
+/*
+ * This is unstable api used in p3pch4t. Other projects are recommended to use Go library directly
+ * If you also need to use the C api, then this api is the way to go.
+ * I'll do my best to keep it stable but some breaking changes may happen.
+ */
 
 func main() {}
 
@@ -255,101 +259,6 @@ func SendMessage(piId int, uid int64, text *C.char) {
 	a[piId].SendMessage(ui, core.MessageTypeText, C.GoString(text))
 }
 
-//export CreateFileStoreElement
-func CreateFileStoreElement(piId int, uid uint, fileInChatPath *C.char, localFilePath *C.char) int64 {
-	ui, err := a[piId].GetUserInfoByID(uid)
-	if err != nil {
-		return -1
-	}
-	fi := a[piId].CreateFileStoreElement(ui.GetKeyID(), "", C.GoString(fileInChatPath), C.GoString(localFilePath), time.Now().UnixMicro(), "")
-	fi.Announce(a[piId])
-	return int64(fi.ID)
-}
-
-//export GetFileStoreElementLocalPath
-func GetFileStoreElementLocalPath(piId int, fseId uint) *C.char {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(fse.LocalPath())
-	return C.CString(fse.LocalPath())
-}
-
-//export GetFileStoreElementIsDownloaded
-func GetFileStoreElementIsDownloaded(piId int, fseId uint) bool {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return fse.IsDownloaded()
-}
-
-//export GetFileStoreElementSizeBytes
-func GetFileStoreElementSizeBytes(piId int, fseId uint) int64 {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return fse.SizeBytes
-}
-
-//export GetFileStoreElementPath
-func GetFileStoreElementPath(piId int, fseId uint) *C.char {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return C.CString(fse.Path)
-}
-
-//export SetFileStoreElementPath
-func SetFileStoreElementPath(piId int, fseId uint, newPath *C.char) {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fse.Path = C.GoString(newPath)
-	a[piId].DB.Save(&fse)
-}
-
-//export GetFileStoreElementIsDeleted
-func GetFileStoreElementIsDeleted(piId int, fseId uint) bool {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return fse.IsDeleted
-}
-
-//export SetFileStoreElementIsDeleted
-func SetFileStoreElementIsDeleted(piId int, fseId uint, isDeleted bool) {
-	fse, err := a[piId].GetFileStoreById(fseId)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fse.IsDeleted = isDeleted
-	a[piId].DB.Save(&fse)
-}
-
-//export GetUserInfoFileStoreElements
-func GetUserInfoFileStoreElements(piId int, UserInfoID int) *C.char {
-	ui, err := a[piId].GetUserInfoByID(uint(UserInfoID))
-	if err != nil {
-		log.Fatalln(err)
-	}
-	msgs := a[piId].GetFileStoreElementsByUserInfo(ui)
-	var msgids []uint
-	for i := range msgs {
-		msgids = append(msgids, msgs[i].ID)
-	}
-	b, err := json.Marshal(msgids)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return C.CString(string(b))
-}
-
 //export GetUserInfoEndpointStats
 func GetUserInfoEndpointStats(piId int, uid int64) uint {
 	ui, err := a[piId].GetUserInfoByID(uint(uid))
@@ -459,11 +368,11 @@ func GetEndpointStatsLastContactOut(piId int, endpointStatsId int) int64 {
 	return estats.LastContactOut.UnixMicro()
 }
 
-//export GetEndpointStatsLastContactIn
-func GetEndpointStatsLastContactIn(piId int, endpointStatsId int) int64 {
-	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
-	return estats.LastContactIn.UnixMicro()
-}
+////export GetEndpointStatsLastContactIn
+//func GetEndpointStatsLastContactIn(piId int, endpointStatsId int) int64 {
+//	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
+//	return estats.LastContactIn.UnixMicro()
+//}
 
 //export GetEndpointStatsFailInRow
 func GetEndpointStatsFailInRow(piId int, endpointStatsId int) int {
@@ -475,4 +384,17 @@ func GetEndpointStatsFailInRow(piId int, endpointStatsId int) int {
 func GetEndpointStatsCurrentDelay(piId int, endpointStatsId int) int {
 	estats := a[piId].GetEndpointStatsByID(endpointStatsId)
 	return estats.CurrentDelay
+}
+
+//export CreateFile
+func CreateFile(piId int, uid int64, localFilePath *C.char, remoteFilePath *C.char) *C.char {
+	ui, err := a[piId].GetUserInfoByID(uint(uid))
+	if err != nil {
+		return C.CString(err.Error())
+	}
+	err = a[piId].CreateFile(ui, C.GoString(localFilePath), C.GoString(remoteFilePath))
+	if err != nil {
+		return C.CString(err.Error())
+	}
+	return C.CString("")
 }

@@ -19,7 +19,6 @@ const (
 	EventTypeIntroduce        EventType = "introduce"
 	EventTypeIntroduceRequest EventType = "introduce.request"
 	EventTypeMessage          EventType = "message"
-	EventTypeFile             EventType = "file"
 )
 
 type Event struct {
@@ -43,7 +42,6 @@ type EventDataMixed struct {
 	EventDataIntroduce
 	EventDataIntroduceRequest
 	EventDataMessage
-	EventDataFile
 }
 
 type MessageType string
@@ -71,16 +69,6 @@ type EventDataMessage struct {
 	Type    MessageType `json:"type,omitempty"`
 }
 
-type EventDataFile struct {
-	Uuid       string `json:"file_uuid,omitempty"`
-	HttpPath   string `json:"http_path,omitempty"`
-	Path       string `json:"path,omitempty"` // the in chat path, eg /Apps/Calendar.xdc
-	Sha512sum  string `json:"sha512sum,omitempty"`
-	SizeBytes  int64  `json:"sizeBytes,omitempty"`
-	IsDeleted  bool   `json:"isDeleted,omitempty"`
-	ModifyTime int64  `json:"modifyTime,omitempty"`
-}
-
 func (evt *Event) TryProcess(pi *PrivateInfoS) {
 	for i := range pi.EventCallback {
 		pi.EventCallback[i](pi, evt)
@@ -92,8 +80,6 @@ func (evt *Event) TryProcess(pi *PrivateInfoS) {
 		evt.tryProcessIntroduceRequest(pi)
 	case EventTypeMessage:
 		evt.tryProcessMessage(pi)
-	case EventTypeFile:
-		evt.tryProcessFile(pi)
 	default:
 		log.Println("WARN: Unhandled event, type:", evt.EventType)
 	}
@@ -183,31 +169,5 @@ func (evt *Event) tryProcessMessage(pi *PrivateInfoS) {
 	}
 	for i := range pi.MessageCallback {
 		pi.MessageCallback[i](pi, ui, evt, msg)
-	}
-}
-
-// EventTypeFile             EventType = "file"
-func (evt *Event) tryProcessFile(pi *PrivateInfoS) {
-	log.Println("evt.tryProcessFile")
-	if evt.InternalKeyID == "" {
-		log.Println("warn! unknown evt.InternalKeyID")
-		evt.InternalKeyID = "___UNKNOWN___"
-		return
-	}
-	fse := pi.CreateFileStoreElement(
-		StringToKeyID(evt.InternalKeyID),
-		evt.Data.EventDataFile.Uuid,
-		evt.Data.EventDataFile.Path,
-		"",
-		evt.Data.EventDataFile.ModifyTime,
-		evt.Data.EventDataFile.HttpPath,
-	)
-	ui, err := pi.GetUserInfoByKeyID(evt.InternalKeyID)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	for i := range pi.FileStoreElementCallback {
-		pi.FileStoreElementCallback[i](pi, ui, &fse, false)
 	}
 }

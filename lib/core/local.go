@@ -30,6 +30,7 @@ func StartLocalServer() {
 	IsLocalServerRunning = true
 	r = chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Get("/files.http/{sharedFor}/*", FileServe)
 	r.Get("/", getHandleGet())
 	r.Post("/", getHandlePost())
 	r.Get("/*", getHandleGet())
@@ -80,14 +81,6 @@ func getHandleGet() func(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println(pathpart, r.RequestURI)
 		// Are we looking for a file?
-		var fselist []FileStoreElement
-		pi.DB.Where("is_deleted = false").Find(&fselist)
-		for i := range fselist {
-			if strings.HasSuffix(r.RequestURI, fselist[i].HttpRequestPart()) {
-				http.ServeFile(w, r, fselist[i].LocalPath())
-				return
-			}
-		}
 		// we are not looking for a file
 
 		processDiscovery(pi, w, r)

@@ -22,16 +22,14 @@ type UserInfo struct {
 }
 
 func (pi *PrivateInfoS) PurgeUser(ui *UserInfo) {
+	// NOTE: Why is the auto migrate here?!?!?!?
 	log.Println("DB.AutoMigrate.UserInfo", pi.DB.AutoMigrate(&UserInfo{}))
 	log.Println("DB.AutoMigrate.QueuedEvent", pi.DB.AutoMigrate(&QueuedEvent{}))
 	log.Println("DB.AutoMigrate.Message", pi.DB.AutoMigrate(&Message{}))
-	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
 	// Delete userinfo messages
 	pi.DB.Delete(&Message{}, "key_id = ?", ui.KeyID)
 	// Delete userinfo queued events
 	pi.DB.Delete(&QueuedEvent{}, "endpoint = ?", ui.Endpoint)
-	// Delete userinfo file store elements
-	pi.DB.Delete(&FileStoreElement{}, "internal_key_id = ?", ui.KeyID)
 	// Delete userinfo from db
 	pi.DB.Delete(&UserInfo{})
 }

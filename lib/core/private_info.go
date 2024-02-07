@@ -20,20 +20,24 @@ type PrivateInfoS struct {
 	Passphrase  []byte
 	Endpoint    Endpoint
 	IsMini      bool
-	DB          *gorm.DB `gorm:"-"`
+	//
+	StorePath string
+	//
+	DB *gorm.DB `gorm:"-"`
 	// Callbacks
-	MessageCallback          []func(pi *PrivateInfoS, ui *UserInfo, evt *Event, msg *Message)              `gorm:"-"`
-	FileStoreElementCallback []func(pi *PrivateInfoS, ui *UserInfo, fse *FileStoreElement, completed bool) `gorm:"-"`
-	IntroduceCallback        []func(pi *PrivateInfoS, ui *UserInfo, evt *Event)                            `gorm:"-"`
-	EventCallback            []func(pi *PrivateInfoS, evt *Event)                                          `gorm:"-"`
+	MessageCallback   []func(pi *PrivateInfoS, ui *UserInfo, evt *Event, msg *Message) `gorm:"-"`
+	IntroduceCallback []func(pi *PrivateInfoS, ui *UserInfo, evt *Event)               `gorm:"-"`
+	EventCallback     []func(pi *PrivateInfoS, evt *Event)                             `gorm:"-"`
 }
 
 func (pi *PrivateInfoS) IsAccountReady() bool {
+	sp := pi.StorePath
 	pi.Refresh()
+	pi.StorePath = sp
 	return len(pi.Passphrase) != 0
 }
 func (pi *PrivateInfoS) Refresh() {
-	pi.DB.First(pi)
+	pi.DB.First(pi, "1 = 1") // Unsure if '1 = 1' is needed?
 }
 func (pi *PrivateInfoS) Create(username string, email string, bitSize int) {
 	pi.DB.FirstOrCreate(pi)

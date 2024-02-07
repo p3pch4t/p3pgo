@@ -18,8 +18,6 @@ func QueueEvent(pi *PrivateInfoS, evt Event, ui *UserInfo) {
 		eventBody, err = json.Marshal(&evt.Data.EventDataIntroduceRequest)
 	case EventTypeMessage:
 		eventBody, err = json.Marshal(&evt.Data.EventDataMessage)
-	case EventTypeFile:
-		eventBody, err = json.Marshal(&evt.Data.EventDataFile)
 	default:
 		log.Println("WARN: Unable to queue event:", evt.EventType)
 	}

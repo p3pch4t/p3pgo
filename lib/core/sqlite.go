@@ -39,7 +39,7 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.SetOutput(mw)
 	log.Println("OpenSqlite(): logger setup!")
 	log.Println("OpenSqlite(): opening sqlite database in:", storePath)
-	var pi = PrivateInfoS{AccountName: accountName}
+	var pi = PrivateInfoS{AccountName: accountName, StorePath: storePath}
 
 	pi.DB, err = gorm.Open(sqlite.Open(path.Join(storePath, "p3p.db")), &gorm.Config{})
 	if err != nil {
@@ -48,21 +48,18 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("DB.AutoMigrate.UserInfo", pi.DB.AutoMigrate(&UserInfo{}))
 	log.Println("DB.AutoMigrate.QueuedEvent", pi.DB.AutoMigrate(&QueuedEvent{}))
 	log.Println("DB.AutoMigrate.Message", pi.DB.AutoMigrate(&Message{}))
-	log.Println("DB.AutoMigrate.FileStoreElement", pi.DB.AutoMigrate(&FileStoreElement{}))
 	log.Println("DB.AutoMigrate.PrivateInfoS", pi.DB.AutoMigrate(&PrivateInfoS{}))
 	log.Println("DB.AutoMigrate.EndpointStats", pi.DB.AutoMigrate(&EndpointStats{}))
+	log.Println("DB.AutoMigrate.SharedFile", pi.DB.AutoMigrate(&SharedFile{}))
+	log.Println("DB.AutoMigrate.SharedForBearer", pi.DB.AutoMigrate(&SharedForBearer{}))
 
 	pi.Refresh()
 	pi.IsMini = isMini
 	if isMini {
 		log.Println(`NOTE: isMini = true`)
 		log.Println(`EventQueueRunner won't be run and you are on your own with relaying events'`)
-		log.Println("FileStoreElementQueueRunner won't be run and you are on your own with broadcasting changed files.")
-		log.Println("FileStoreElementDownloadLoop won't be run and you are on your own with downloading files.")
 	} else {
 		go pi.EventQueueRunner()
-		go pi.FileStoreElementQueueRunner()
-		go pi.FileStoreElementDownloadLoop()
 	}
 	pi.ensureProperUserInfo()
 	StartLocalServer()

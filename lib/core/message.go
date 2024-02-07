@@ -26,12 +26,6 @@ func (pi *PrivateInfoS) GetMessagesByUserInfo(ui *UserInfo) []Message {
 	return msgs
 }
 
-func (pi *PrivateInfoS) GetFileStoreElementsByUserInfo(ui *UserInfo) []FileStoreElement {
-	var fselms []FileStoreElement
-	pi.DB.Where("internal_key_id = ?", ui.GetKeyID()).Order("created_at DESC").Find(&fselms)
-	return fselms
-}
-
 func (pi *PrivateInfoS) SendMessage(ui *UserInfo, messageType MessageType, text string) {
 	log.Println("SendMessage", ui.GetKeyID(), messageType)
 	pi.DB.Save(&Message{KeyID: ui.GetKeyID(), Incoming: false, Body: text})
