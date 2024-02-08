@@ -30,6 +30,7 @@ type SharedFile struct {
 	Sha512Sum     string    `json:"sha512sum"`
 	LastEdit      time.Time `json:"last_edit"`
 	FilePath      string    `json:"file_path"`
+	SizeBytes     int64     `json:"size_bytes"`
 	LocalFilePath string    `json:"-"`
 }
 
@@ -149,11 +150,13 @@ func (pi *PrivateInfoS) CreateFile(ui *UserInfo, localFilePath string, remoteFil
 	//LocalFilePath string `json:"-"`
 	sf.LocalFilePath = localStorePath
 
-	_, err = copyFile(localFilePath, localStorePath)
+	size, err := copyFile(localFilePath, localStorePath)
 	if err != nil {
 		return err
 	}
 
+	sf.SizeBytes = size
+	pi.DB.Save(sf)
 	return nil
 }
 

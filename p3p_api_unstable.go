@@ -472,6 +472,12 @@ func GetSharedFileLocalFilePath(piId int, fileId uint) *C.char {
 	return C.CString(f.LocalFilePath)
 }
 
+//export GetSharedFileSizeBytes
+func GetSharedFileSizeBytes(piId int, fileId uint) int64 {
+	f := a[piId].GetSharedFileById(fileId)
+	return f.SizeBytes
+}
+
 //export DeleteSharedFile
 func DeleteSharedFile(piId int, fileId uint) {
 	f := a[piId].GetSharedFileById(fileId)
