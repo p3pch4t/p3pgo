@@ -398,3 +398,82 @@ func CreateFile(piId int, uid int64, localFilePath *C.char, remoteFilePath *C.ch
 	}
 	return C.CString("")
 }
+
+//export GetSharedFilesIDs
+func GetSharedFilesIDs(piId int, uid int64) *C.char {
+	ui, err := a[piId].GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	ids := a[piId].GetSharedFilesIDs(ui)
+	b, err := json.Marshal(ids)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(string(b))
+}
+
+// func (pi *PrivateInfoS) GetSharedFileById(id uint) (sf *SharedFile) {
+
+//export GetSharedFileID
+func GetSharedFileID(piId int, fileId uint) uint {
+	f := a[piId].GetSharedFileById(fileId)
+	return f.ID
+}
+
+//export GetSharedFileCreatedAt
+func GetSharedFileCreatedAt(piId int, fileId uint) int64 {
+	f := a[piId].GetSharedFileById(fileId)
+	return f.CreatedAt.UnixMicro()
+}
+
+//export GetSharedFileUpdatedAt
+func GetSharedFileUpdatedAt(piId int, fileId uint) int64 {
+	f := a[piId].GetSharedFileById(fileId)
+	return f.UpdatedAt.UnixMicro()
+}
+
+//export GetSharedFileDeletedAt
+func GetSharedFileDeletedAt(piId int, fileId uint) int64 {
+	f := a[piId].GetSharedFileById(fileId)
+	if !f.DeletedAt.Valid {
+		return 0
+	}
+	return f.DeletedAt.Time.UnixMicro()
+}
+
+//export GetSharedFileSharedFor
+func GetSharedFileSharedFor(piId int, fileId uint) *C.char {
+	f := a[piId].GetSharedFileById(fileId)
+	return C.CString(f.SharedFor)
+}
+
+//export GetSharedFileSha512Sum
+func GetSharedFileSha512Sum(piId int, fileId uint) *C.char {
+	f := a[piId].GetSharedFileById(fileId)
+	return C.CString(f.Sha512Sum)
+}
+
+//export GetSharedFileLastEdit
+func GetSharedFileLastEdit(piId int, fileId uint) int64 {
+	f := a[piId].GetSharedFileById(fileId)
+	return f.LastEdit.UnixMicro()
+}
+
+//export GetSharedFileFilePath
+func GetSharedFileFilePath(piId int, fileId uint) *C.char {
+	f := a[piId].GetSharedFileById(fileId)
+	return C.CString(f.FilePath)
+}
+
+//export GetSharedFileLocalFilePath
+func GetSharedFileLocalFilePath(piId int, fileId uint) *C.char {
+	f := a[piId].GetSharedFileById(fileId)
+	return C.CString(f.LocalFilePath)
+}
+
+//export DeleteSharedFile
+func DeleteSharedFile(piId int, fileId uint) {
+	f := a[piId].GetSharedFileById(fileId)
+	a[piId].DeleteSharedFile(f)
+}

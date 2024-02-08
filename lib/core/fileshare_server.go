@@ -26,11 +26,19 @@ type SharedForBearer struct {
 type SharedFile struct {
 	gorm.Model
 	// SharedFor - determines who is allowed to access the file.
-	SharedFor     string `json:"-"`
-	Sha512Sum     string `json:"sha512sum"`
-	LastEdit      int64  `json:"last_edit"`
-	FilePath      string `json:"file_path"`
-	LocalFilePath string `json:"-"`
+	SharedFor     string    `json:"-"`
+	Sha512Sum     string    `json:"sha512sum"`
+	LastEdit      time.Time `json:"last_edit"`
+	FilePath      string    `json:"file_path"`
+	LocalFilePath string    `json:"-"`
+}
+
+func (pi *PrivateInfoS) DeleteSharedFile(sf *SharedFile) {
+	err := os.Remove(sf.LocalFilePath)
+	if err != nil {
+		log.Println(err)
+	}
+	pi.DB.Delete(sf)
 }
 
 func (sf *SharedFile) Bearer(pi *PrivateInfoS) string {
@@ -135,7 +143,7 @@ func (pi *PrivateInfoS) CreateFile(ui *UserInfo, localFilePath string, remoteFil
 	//Sha512Sum     string `json:"sha512sum"`
 	sf.Sha512Sum = sum
 	//LastEdit      int    `json:"last_edit"`
-	sf.LastEdit = time.Now().UnixMilli()
+	sf.LastEdit = time.Now()
 	//FilePath      string `json:"file_path"`
 	sf.FilePath = remoteFilePath
 	//LocalFilePath string `json:"-"`
@@ -155,7 +163,7 @@ func (pi *PrivateInfoS) GetSharedFiles(ui *UserInfo) (sfs []*SharedFile) {
 	return sfs
 }
 
-func (pi *PrivateInfoS) GetSharedFilesID(ui *UserInfo) []uint {
+func (pi *PrivateInfoS) GetSharedFilesIDs(ui *UserInfo) []uint {
 	var sfs []*SharedFile
 	sharedFor := ui.GetKeyID()
 	pi.DB.Find(&sfs, "shared_for = ?", sharedFor)
