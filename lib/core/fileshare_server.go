@@ -1,13 +1,11 @@
 package core
 
 import (
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +13,9 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 )
 
 type SharedForBearer struct {
@@ -121,14 +122,15 @@ func (pi *PrivateInfoS) CreateFile(ui *UserInfo, localFilePath string, remoteFil
 	sharedFor := ui.GetKeyID()
 	var sf SharedFile
 	pi.DB.First(sf, "shared_for = ? AND file_path = ?", sharedFor, remoteFilePath)
-	f, err := os.Open("file.txt")
+	f, err := os.Open(localFilePath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	h := sha512.New()
+	_, err = io.Copy(h, f)
+	if err != nil {
 		return err
 	}
 
@@ -136,7 +138,8 @@ func (pi *PrivateInfoS) CreateFile(ui *UserInfo, localFilePath string, remoteFil
 
 	localStorePath := path.Join(pi.StorePath, "files-http", ui.GetKeyID(), sum)
 
-	if fileExists(localFilePath) {
+	if fileExists(localStorePath) {
+		log.Println("file exists:", localStorePath)
 		return errors.New("file with given sha512 checksum already exists")
 	}
 	//SharedFor     string `json:"-"`
@@ -156,7 +159,7 @@ func (pi *PrivateInfoS) CreateFile(ui *UserInfo, localFilePath string, remoteFil
 	}
 
 	sf.SizeBytes = size
-	pi.DB.Save(sf)
+	pi.DB.Save(&sf)
 	return nil
 }
 
@@ -183,11 +186,11 @@ func (pi *PrivateInfoS) GetSharedFileById(id uint) (sf *SharedFile) {
 }
 
 func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
+	_, err := os.Stat(filename)
+	if err == nil {
+		return true
 	}
-	return !info.IsDir()
+	return false
 }
 
 func copyFile(src, dst string) (int64, error) {
