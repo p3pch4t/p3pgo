@@ -63,7 +63,7 @@ type EventDataIntroduce struct {
 
 type SharedFilesMetadata struct {
 	gorm.Model     `json:"-"`
-	DBKeyID        string   `json:"-"`
+	DBKeyID        string   `json:"-",gorm:"column:db_key_id"`
 	KeyPart        string   `json:"keyPart,omitempty"`
 	FilesEndpoint  Endpoint `json:"filesEndpoint,omitempty"`
 	Authentication string   `json:"authentication,omitempty"`
@@ -111,8 +111,8 @@ func (evt *Event) tryProcessIntroduce(pi *PrivateInfoS) {
 	log.Println("new introduction:", evt.Data.EventDataIntroduce.Username, ui.Username, err)
 
 	fs := evt.Data.EventDataIntroduce.FilesMetadata
+	pi.DB.Where("db_key_id = ?", ui.GetKeyID()).Delete(&SharedFilesMetadata{})
 	for i := range fs {
-		pi.DB.Delete(&SharedFilesMetadata{}, "files_endpoint = ? AND key_part = ?", fs[i].FilesEndpoint, i)
 		pi.DB.Save(&SharedFilesMetadata{
 			DBKeyID:        ui.GetKeyID(),
 			KeyPart:        i,

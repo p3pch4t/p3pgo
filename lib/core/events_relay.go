@@ -62,6 +62,7 @@ func (evt *QueuedEvent) Relay(pi *PrivateInfoS) error {
 func (pi *PrivateInfoS) getEndpointStats(endpoint Endpoint) *EndpointStats {
 	var endpointStats EndpointStats
 	pi.DB.First(&endpointStats, "endpoint = ?", string(endpoint))
+	endpointStats.Endpoint = string(endpoint)
 	return &endpointStats
 }
 
@@ -130,12 +131,13 @@ func (es *EndpointStats) SuccessOut(pi *PrivateInfoS) {
 //}
 
 func (es *EndpointStats) ShouldRelayNow(pi *PrivateInfoS) bool {
-	if es.FailInRow == 0 {
+	if es.FailInRow <= 0 {
 		es.CurrentDelay = 0
 		pi.DB.Save(es)
 		return true
 	}
 	if es.CurrentDelay >= 0 {
+		log.Println("currentDelay: ", es.CurrentDelay)
 		es.CurrentDelay--
 		pi.DB.Save(es)
 		return false

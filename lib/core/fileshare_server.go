@@ -43,15 +43,16 @@ func (pi *PrivateInfoS) DeleteSharedFile(sf *SharedFile) {
 	pi.DB.Delete(sf)
 }
 
-func (sf *SharedFile) Bearer(pi *PrivateInfoS) string {
+func (pi *PrivateInfoS) RemoteFilesAccessBearer(ui *UserInfo) string {
 	var sfb SharedForBearer
-	pi.DB.First(&sfb, "shared_for = ?", sf.SharedFor)
+	pi.DB.First(&sfb, "shared_for = ?", ui.GetKeyID())
 	if sfb.Bearer == "" {
 		s, err := GenerateRandomStringURLSafe(128)
 		if err != nil {
 			log.Fatalln("Failed to generate random number", err)
 		}
 		sfb.Bearer = s
+		sfb.SharedFor = ui.GetKeyID()
 		pi.DB.Save(&sfb)
 	}
 	return sfb.Bearer
@@ -73,10 +74,11 @@ func FileServe(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			return
 		}
+		return
 	}
 
-	if filePath == ".metadata.json" {
-		log.Println("\t-> .metadata.json")
+	if filePath == "/.metadata.json" {
+		log.Println("\t-> /.metadata.json")
 		var lsf []SharedFile
 		pi.DB.Find(&lsf, "shared_for = ?", sharedFor)
 		m, err := json.MarshalIndent(lsf, "    ", "    ")
@@ -105,6 +107,9 @@ func FileServe(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPrivateInfoBySharedFor(sharedFor string, auth string) (*PrivateInfoS, error) {
+	if strings.HasPrefix(auth, "Bearer ") {
+		auth = auth[len("Bearer "):]
+	}
 	if sharedFor == "" || auth == "" {
 		return nil, errors.New("invalid data provided. No auth or sharedFor")
 	}
@@ -172,7 +177,8 @@ func (pi *PrivateInfoS) GetSharedFiles(ui *UserInfo) (sfs []*SharedFile) {
 func (pi *PrivateInfoS) GetSharedFilesMetadata(ui *UserInfo) (sfm SharedFilesMetadata) {
 	sharedFor := ui.GetKeyID()
 	return SharedFilesMetadata{
-		FilesEndpoint: Endpoint(fmt.Sprintf("http://%s/files.http/%s", pi.Endpoint.GetHost(), sharedFor)),
+		FilesEndpoint:  Endpoint(strings.ReplaceAll(fmt.Sprintf("%s/files.http/%s", pi.Endpoint.GetHost(), sharedFor), "//files.http", "/files.http")),
+		Authentication: pi.RemoteFilesAccessBearer(ui),
 	}
 }
 
@@ -187,9 +193,10 @@ func (pi *PrivateInfoS) GetSharedFilesIDs(ui *UserInfo) []uint {
 	return ints
 }
 
-func (pi *PrivateInfoS) GetSharedFileById(id uint) (sf *SharedFile) {
-	pi.DB.Find(&sf, "id = ?", id)
-	return sf
+func (pi *PrivateInfoS) GetSharedFileById(id uint) *SharedFile {
+	var sf SharedFile
+	pi.DB.First(&sf, "id = ?", id)
+	return &sf
 }
 
 func fileExists(filename string) bool {

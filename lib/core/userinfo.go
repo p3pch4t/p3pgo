@@ -98,16 +98,17 @@ func (ui *UserInfo) SendIntroduceEvent(pi *PrivateInfoS) {
 func (ui *UserInfo) GetReceivedSharedFilesMetadataIDs(pi *PrivateInfoS) []uint {
 	sfmsIds := []uint{}
 	var sfms []*SharedFilesMetadata
-	pi.DB.Find(&sfms, "DBKeyID = ?", ui.GetKeyID())
+	pi.DB.Find(&sfms, "db_key_id = ?", ui.GetKeyID())
 	for i := range sfms {
 		sfmsIds = append(sfmsIds, sfms[i].ID)
 	}
 	return sfmsIds
 }
 
-func (pi *PrivateInfoS) GetReceivedSharedFile(id uint) (sfm *SharedFilesMetadata) {
-	pi.DB.First(sfm, "id = ? AND DBKeyID = ?", id)
-	return sfm
+func (pi *PrivateInfoS) GetReceivedSharedFile(id uint) *SharedFilesMetadata {
+	var sfm SharedFilesMetadata
+	pi.DB.First(&sfm, "id = ?", id)
+	return &sfm
 }
 
 func (pi *PrivateInfoS) GetUserInfoByID(id uint) (*UserInfo, error) {

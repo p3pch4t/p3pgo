@@ -6,9 +6,10 @@ package main
 import (
 	"C"
 	"encoding/json"
+	"log"
+
 	"git.mrcyjanek.net/p3pch4t/p3pgo/lib/core"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
-	"log"
 )
 
 /*
@@ -515,6 +516,9 @@ func GetUserInfoSharedFilesIDs(piId int, uid int64) *C.char {
 //export GetReceivedSharedFilesMetadataID
 func GetReceivedSharedFilesMetadataID(piId int, uid uint) uint {
 	sfm := a[piId].GetReceivedSharedFile(uid)
+	if sfm == nil {
+		return 0
+	}
 	return sfm.ID
 }
 
@@ -526,23 +530,35 @@ func GetReceivedSharedFilesMetadataID(piId int, uid uint) uint {
 //export GetReceivedSharedFilesMetadataDBKeyID
 func GetReceivedSharedFilesMetadataDBKeyID(piId int, uid uint) *C.char {
 	sfm := a[piId].GetReceivedSharedFile(uid)
+	if sfm == nil {
+		return C.CString("")
+	}
 	return C.CString(sfm.DBKeyID)
 }
 
 //export GetReceivedSharedFilesMetadataKeyPart
 func GetReceivedSharedFilesMetadataKeyPart(piId int, uid uint) *C.char {
 	sfm := a[piId].GetReceivedSharedFile(uid)
+	if sfm == nil {
+		return C.CString("")
+	}
 	return C.CString(sfm.KeyPart)
 }
 
 //export GetReceivedSharedFilesMetadataFilesEndpoint
 func GetReceivedSharedFilesMetadataFilesEndpoint(piId int, uid uint) *C.char {
 	sfm := a[piId].GetReceivedSharedFile(uid)
+	if sfm == nil {
+		return C.CString("")
+	}
 	return C.CString(string(sfm.FilesEndpoint))
 }
 
 //export GetReceivedSharedFilesMetadataAuthentication
 func GetReceivedSharedFilesMetadataAuthentication(piId int, uid uint) *C.char {
 	sfm := a[piId].GetReceivedSharedFile(uid)
+	if sfm == nil {
+		return C.CString("")
+	}
 	return C.CString(sfm.Authentication)
 }

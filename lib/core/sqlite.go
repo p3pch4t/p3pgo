@@ -52,6 +52,7 @@ func OpenPrivateInfo(newStorePath string, accountName string, endpointPath strin
 	log.Println("DB.AutoMigrate.EndpointStats", pi.DB.AutoMigrate(&EndpointStats{}))
 	log.Println("DB.AutoMigrate.SharedFile", pi.DB.AutoMigrate(&SharedFile{}))
 	log.Println("DB.AutoMigrate.SharedForBearer", pi.DB.AutoMigrate(&SharedForBearer{}))
+	log.Println("DB.AutoMigrate.SharedFilesMetadata", pi.DB.AutoMigrate(&SharedFilesMetadata{}))
 
 	pi.Refresh()
 	pi.IsMini = isMini
