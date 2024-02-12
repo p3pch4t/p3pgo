@@ -268,6 +268,20 @@ func GetUserInfoEndpointStats(piId int, uid int64) uint {
 	return ui.GetEndpointStats(a[piId]).ID
 }
 
+//export GetUserInfoSharedFilesMetadataIDs
+func GetUserInfoSharedFilesMetadataIDs(piId int, uid int64) *C.char {
+	ui, err := a[piId].GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	list := ui.GetReceivedSharedFilesMetadataIDs(a[piId])
+	b, err := json.Marshal(list)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(string(b))
+}
+
 // --------- QueuedEvents
 
 //export GetQueuedEventIDs
@@ -482,4 +496,53 @@ func GetSharedFileSizeBytes(piId int, fileId uint) int64 {
 func DeleteSharedFile(piId int, fileId uint) {
 	f := a[piId].GetSharedFileById(fileId)
 	a[piId].DeleteSharedFile(f)
+}
+
+//export GetUserInfoSharedFilesIDs
+func GetUserInfoSharedFilesIDs(piId int, uid int64) *C.char {
+	ui, err := a[piId].GetUserInfoByID(uint(uid))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	list := ui.GetReceivedSharedFilesMetadataIDs(a[piId])
+	b, err := json.Marshal(list)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return C.CString(string(b))
+}
+
+//export GetReceivedSharedFilesMetadataID
+func GetReceivedSharedFilesMetadataID(piId int, uid uint) uint {
+	sfm := a[piId].GetReceivedSharedFile(uid)
+	return sfm.ID
+}
+
+// KeyPart        string   `json:"keyPart,omitempty"`
+// FilesEndpoint  Endpoint `json:"filesEndpoint,omitempty"`
+// Authentication string   `json:"authentication,omitempty"`
+//
+
+//export GetReceivedSharedFilesMetadataDBKeyID
+func GetReceivedSharedFilesMetadataDBKeyID(piId int, uid uint) *C.char {
+	sfm := a[piId].GetReceivedSharedFile(uid)
+	return C.CString(sfm.DBKeyID)
+}
+
+//export GetReceivedSharedFilesMetadataKeyPart
+func GetReceivedSharedFilesMetadataKeyPart(piId int, uid uint) *C.char {
+	sfm := a[piId].GetReceivedSharedFile(uid)
+	return C.CString(sfm.KeyPart)
+}
+
+//export GetReceivedSharedFilesMetadataFilesEndpoint
+func GetReceivedSharedFilesMetadataFilesEndpoint(piId int, uid uint) *C.char {
+	sfm := a[piId].GetReceivedSharedFile(uid)
+	return C.CString(string(sfm.FilesEndpoint))
+}
+
+//export GetReceivedSharedFilesMetadataAuthentication
+func GetReceivedSharedFilesMetadataAuthentication(piId int, uid uint) *C.char {
+	sfm := a[piId].GetReceivedSharedFile(uid)
+	return C.CString(sfm.Authentication)
 }

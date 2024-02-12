@@ -1,6 +1,7 @@
 package core
 
 import (
+	"gorm.io/gorm"
 	"log"
 	"strings"
 
@@ -54,9 +55,18 @@ const (
 )
 
 type EventDataIntroduce struct {
-	PublicKey string   `json:"publickey,omitempty"`
-	Endpoint  Endpoint `json:"endpoints,omitempty"`
-	Username  string   `json:"username,omitempty"`
+	PublicKey     string                          `json:"publickey,omitempty"`
+	Endpoint      Endpoint                        `json:"endpoints,omitempty"`
+	Username      string                          `json:"username,omitempty"`
+	FilesMetadata map[string]*SharedFilesMetadata `json:"filesMetadata,omitempty"`
+}
+
+type SharedFilesMetadata struct {
+	gorm.Model     `json:"-"`
+	DBKeyID        string   `json:"-"`
+	KeyPart        string   `json:"keyPart,omitempty"`
+	FilesEndpoint  Endpoint `json:"filesEndpoint,omitempty"`
+	Authentication string   `json:"authentication,omitempty"`
 }
 
 type EventDataIntroduceRequest struct {
@@ -99,6 +109,18 @@ func (evt *Event) tryProcessIntroduce(pi *PrivateInfoS) {
 		false,
 	)
 	log.Println("new introduction:", evt.Data.EventDataIntroduce.Username, ui.Username, err)
+
+	fs := evt.Data.EventDataIntroduce.FilesMetadata
+	for i := range fs {
+		pi.DB.Delete(&SharedFilesMetadata{}, "files_endpoint = ? AND key_part = ?", fs[i].FilesEndpoint, i)
+		pi.DB.Save(&SharedFilesMetadata{
+			DBKeyID:        ui.GetKeyID(),
+			KeyPart:        i,
+			FilesEndpoint:  fs[i].FilesEndpoint,
+			Authentication: fs[i].Authentication,
+		})
+	}
+
 	for i := range pi.IntroduceCallback {
 		pi.IntroduceCallback[i](pi, ui, evt)
 	}

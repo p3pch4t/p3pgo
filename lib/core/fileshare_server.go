@@ -46,15 +46,15 @@ func (pi *PrivateInfoS) DeleteSharedFile(sf *SharedFile) {
 func (sf *SharedFile) Bearer(pi *PrivateInfoS) string {
 	var sfb SharedForBearer
 	pi.DB.First(&sfb, "shared_for = ?", sf.SharedFor)
-	if sf.SharedFor == "" {
+	if sfb.Bearer == "" {
 		s, err := GenerateRandomStringURLSafe(128)
 		if err != nil {
 			log.Fatalln("Failed to generate random number", err)
 		}
-		sf.SharedFor = s
-		pi.DB.Save(&sf)
+		sfb.Bearer = s
+		pi.DB.Save(&sfb)
 	}
-	return sf.SharedFor
+	return sfb.Bearer
 }
 
 // FileServe - Handle all file requests
@@ -167,6 +167,13 @@ func (pi *PrivateInfoS) GetSharedFiles(ui *UserInfo) (sfs []*SharedFile) {
 	sharedFor := ui.GetKeyID()
 	pi.DB.Find(sfs, "shared_for = ?", sharedFor)
 	return sfs
+}
+
+func (pi *PrivateInfoS) GetSharedFilesMetadata(ui *UserInfo) (sfm SharedFilesMetadata) {
+	sharedFor := ui.GetKeyID()
+	return SharedFilesMetadata{
+		FilesEndpoint: Endpoint(fmt.Sprintf("http://%s/files.http/%s", pi.Endpoint.GetHost(), sharedFor)),
+	}
 }
 
 func (pi *PrivateInfoS) GetSharedFilesIDs(ui *UserInfo) []uint {

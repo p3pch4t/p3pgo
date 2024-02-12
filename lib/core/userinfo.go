@@ -21,6 +21,14 @@ type UserInfo struct {
 	Endpoint    Endpoint `json:"endpoint"`
 }
 
+type FilesMetadata struct {
+	gorm.Model
+	UserId         uint     `json:"id"`
+	Tag            string   `json:"tag"`
+	Endpoint       Endpoint `json:"endpoint"`
+	Authentication string   `json:"authentication"`
+}
+
 func (pi *PrivateInfoS) PurgeUser(ui *UserInfo) {
 	// NOTE: Why is the auto migrate here?!?!?!?
 	log.Println("DB.AutoMigrate.UserInfo", pi.DB.AutoMigrate(&UserInfo{}))
@@ -59,18 +67,47 @@ func (ui *UserInfo) GetKeyID() string {
 	return keyid
 }
 
+func (pi *PrivateInfoS) GetKeyID() string {
+	publicKey, err := crypto.NewKeyFromArmored(pi.PublicKey)
+	if err != nil {
+		log.Panicln("unable to GetKeyID on PI")
+		return ""
+	}
+	keyid := strings.ToLower(publicKey.GetHexKeyID())
+	if len(keyid) > 16 {
+		keyid = keyid[len(keyid)-16:]
+	}
+	return keyid
+}
+
 func (ui *UserInfo) SendIntroduceEvent(pi *PrivateInfoS) {
+	sfm := pi.GetSharedFilesMetadata(ui)
 	internalEvent := Event{
 		EventType: EventTypeIntroduce,
 		Data: EventDataMixed{
 			EventDataIntroduce: EventDataIntroduce{
-				PublicKey: pi.PublicKey,
-				Endpoint:  pi.Endpoint,
-				Username:  pi.Username,
+				PublicKey:     pi.PublicKey,
+				Endpoint:      pi.Endpoint,
+				Username:      pi.Username,
+				FilesMetadata: map[string]*SharedFilesMetadata{pi.GetKeyID(): &sfm},
 			},
 		},
 	}
 	QueueEvent(pi, internalEvent, ui)
+}
+func (ui *UserInfo) GetReceivedSharedFilesMetadataIDs(pi *PrivateInfoS) []uint {
+	sfmsIds := []uint{}
+	var sfms []*SharedFilesMetadata
+	pi.DB.Find(&sfms, "DBKeyID = ?", ui.GetKeyID())
+	for i := range sfms {
+		sfmsIds = append(sfmsIds, sfms[i].ID)
+	}
+	return sfmsIds
+}
+
+func (pi *PrivateInfoS) GetReceivedSharedFile(id uint) (sfm *SharedFilesMetadata) {
+	pi.DB.First(sfm, "id = ? AND DBKeyID = ?", id)
+	return sfm
 }
 
 func (pi *PrivateInfoS) GetUserInfoByID(id uint) (*UserInfo, error) {
